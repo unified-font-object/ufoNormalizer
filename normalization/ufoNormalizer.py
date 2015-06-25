@@ -27,7 +27,7 @@ def normalizeUFO(ufoPath, outputPath=None):
         duplicateUFO(ufoPath, outputPath)
         ufoPath = outputPath
     # get the UFO format version
-    if not subpathExists(ufoPath, "metainfo.plist":
+    if not subpathExists(ufoPath, "metainfo.plist"):
         raise UFONormalizerError(u"Required metainfo.plist file not in %s." % ufoPath)
     metaInfo = subpathReadPlist(ufoPath, "metainfo.plist")
     formatVersion = metaInfo.get("formatVersion")
@@ -60,13 +60,42 @@ def normalizeUFO(ufoPath, outputPath=None):
                 layerMapping[layerName] = layerDirectory
         # rename directories
         layerMapping = normalizeGlyphsDirectoryNames(ufoPath, layerMapping)
-        # XXX update layercontents.plist
+        writeLayerContents(ufoPath, layerMapping)
 
 # ------
 # Layers
 # ------
 
 def normalizeGlyphsDirectoryNames(ufoPath, oldLayerMapping):
+    """
+    non-standard directory names
+    -----------------------------
+    >>> oldLayers = {
+    ...     "public.default" : "glyphs",
+    ...     "Sketches" : "glyphs.sketches",
+    ... }
+    >>> expectedLayers = {
+    ...     "public.default" : "glyphs",
+    ...     "Sketches" : "glyphs.S_ketches",
+    ... }
+    >>> _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers)
+    True
+
+    old directory with same name as new directory
+    ---------------------------------------------
+    >>> oldLayers = {
+    ...     "public.default" : "glyphs",
+    ...     "one" : "glyphs.two",
+    ...     "two" : "glyphs.three"
+    ... }
+    >>> expectedLayers = {
+    ...     "public.default" : "glyphs",
+    ...     "one" : u"glyphs.one",
+    ...     "two" : u"glyphs.two"
+    ... }
+    >>> _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers)
+    True
+    """
     # INVALID DATA POSSIBILITY: no default layer
     # INVALID DATA POSSIBILITY: public.default used for directory other than "glyphs"
     newLayerMapping = {}
@@ -75,27 +104,37 @@ def normalizeGlyphsDirectoryNames(ufoPath, oldLayerMapping):
         if oldLayerDirectory == "glyphs":
             newLayerDirectory = "glyphs"
         else:
-            newLayerDirectory = userNameToFileName(layerName, newLayerDirectories, prefix="glyphs.")
+            newLayerDirectory = userNameToFileName(unicode(layerName), newLayerDirectories, prefix="glyphs.")
         newLayerDirectories.add(newLayerDirectory)
         newLayerMapping[layerName] = newLayerDirectory
-    # rename any existing directories that have identical
-    # names to new directory names (but aren't mapped to the
-    # same layer name, obviously) first. then do the rest.
-    renameFirst = {}
-    renameSecond = {}
-    for layerName, newLayerDirectory in newLayerMapping.items():
+    # don't do a direct rename because an old directory
+    # may have the same name as a new directory.
+    fromTempMapping = {}
+    for index, (layerName, newLayerDirectory) in enumerate(newLayerMapping.items()):
         oldLayerDirectory = oldLayerMapping[layerName]
         if newLayerDirectory == oldLayerDirectory:
             continue
-        if newLayerDirectory in oldLayerMapping.values():
-            renameFirst[oldLayerDirectory] = newLayerDirectory
-        else:
-            renameSecond[oldLayerDirectory] = newLayerDirectory
-    for directoryMapping in (remaneFirst, renameSecond):
-        for oldLayerName, newLayerName in directoryMapping.items():
-            shutil.move()
+        tempDirectory = "org.unifiedfontobject.normalizer.%d" % index
+        subpathRenameDirectory(ufoPath, oldLayerDirectory, tempDirectory)
+        fromTempMapping[tempDirectory] = newLayerDirectory
+    for tempDirectory, newLayerDirectory in fromTempMapping.items():
+        subpathRenameDirectory(ufoPath, tempDirectory, newLayerDirectory)
     return newLayerMapping
 
+def _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers):
+    import tempfile
+    directory = tempfile.mkdtemp()
+    for subDirectory in oldLayers.values():
+        os.mkdir(os.path.join(directory, subDirectory))
+    assert sorted(os.listdir(directory)) == sorted(oldLayers.values())
+    newLayers = normalizeGlyphsDirectoryNames(directory, oldLayers)
+    assert sorted(os.listdir(directory)) == sorted(newLayers.values())
+    shutil.rmtree(directory)
+    return newLayers == expectedLayers
+
+def writeLayerContents(ufoPath, layerMapping):
+    path = subpathJoin(ufoPath, "layercontents.plist")
+    plistlib.writePlist(layerMapping, path)
 
 # ------
 # Glyphs
@@ -117,8 +156,8 @@ def duplicateUFO(inPath, outPath):
     shutil.copytree(inPath, outPath)
 
 def subpathJoin(ufoPath, *subpath):
-    if not isinstance(subPath, basestring):
-        subPath = os.path.join(subPath)
+    if not isinstance(subpath, basestring):
+        subpath = os.path.join(*subpath)
     return os.path.join(ufoPath, subpath)
 
 def subpathExists(ufoPath, *subpath):
@@ -126,7 +165,7 @@ def subpathExists(ufoPath, *subpath):
     return os.path.exists(path)
 
 def subpathReadFile(ufoPath, *subpath):
-    path = subpathJoin(ufoPath, *subpath):
+    path = subpathJoin(ufoPath, *subpath)
     f = open(path, "rb")
     text = f.read()
     f.close()
@@ -136,8 +175,14 @@ def subpathReadPlist(ufoPath, *subpath):
     text = subpathReadFile(ufoPath, *subpath)
     return plistlib.readPlistFromString(text)
 
-def subpathRenameDirectory(ufoPath, *subpath):
-    pass
+def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
+    if isinstance(fromSubpath, basestring):
+        fromSubpath = [fromSubpath]
+    if isinstance(toSubpath, basestring):
+        toSubpath = [toSubpath]
+    inPath = subpathJoin(ufoPath, *fromSubpath)
+    outPath = subpathJoin(ufoPath, *toSubpath)
+    shutil.move(inPath, outPath)
 
 def subpathRenameFile(ufoPath, *subpath):
     pass
@@ -339,3 +384,12 @@ def handleClash2(existing=[], prefix="", suffix=""):
         raise NameTranslationError("No unique name could be found.")
     # finished
     return finalName
+
+
+# -------
+# Testing
+# -------
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
