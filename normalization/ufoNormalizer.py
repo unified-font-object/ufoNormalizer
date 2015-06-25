@@ -50,24 +50,14 @@ def normalizeUFO(ufoPath, outputPath=None):
         if subpathExists(ufoPath, "glyphs"):
             normalizeUFO1And2GlyphsDirectory(ufoPath)
     else:
-        # INVALID DATA POSSIBILITY: directory for layer name may not exist
-        # INVALID DATA POSSIBILITY: directory may not be stored in layer contents
-        layerMapping = {}
-        if subpathExists(ufoPath, "layercontents.plist"):
-            layerContents = subpathReadPlist(ufoPath, "layercontents.plist")
-            for layerName, layerDirectory in layerContents.items():
-                normalizeGlyphsDirectory(ufoPath, layerDirectory)
-                layerMapping[layerName] = layerDirectory
-        # rename directories
-        layerMapping = normalizeGlyphsDirectoryNames(ufoPath, layerMapping)
-        writeLayerContents(ufoPath, layerMapping)
+        normalizeGlyphsDirectoryNames(ufoPath)
     # normalize various files
 
 # ------
 # Layers
 # ------
 
-def normalizeGlyphsDirectoryNames(ufoPath, oldLayerMapping):
+def normalizeGlyphsDirectoryNames(ufoPath):
     """
     non-standard directory names
     -----------------------------
@@ -97,6 +87,16 @@ def normalizeGlyphsDirectoryNames(ufoPath, oldLayerMapping):
     >>> _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers)
     True
     """
+    # INVALID DATA POSSIBILITY: directory for layer name may not exist
+    # INVALID DATA POSSIBILITY: directory may not be stored in layer contents
+    oldLayerMapping = {}
+    if subpathExists(ufoPath, "layercontents.plist"):
+        layerContents = subpathReadPlist(ufoPath, "layercontents.plist")
+        for layerName, layerDirectory in layerContents.items():
+            normalizeGlyphsDirectory(ufoPath, layerDirectory)
+            oldLayerMapping[layerName] = layerDirectory
+    if not oldLayerMapping:
+        return
     # INVALID DATA POSSIBILITY: no default layer
     # INVALID DATA POSSIBILITY: public.default used for directory other than "glyphs"
     newLayerMapping = {}
@@ -120,6 +120,8 @@ def normalizeGlyphsDirectoryNames(ufoPath, oldLayerMapping):
         fromTempMapping[tempDirectory] = newLayerDirectory
     for tempDirectory, newLayerDirectory in fromTempMapping.items():
         subpathRenameDirectory(ufoPath, tempDirectory, newLayerDirectory)
+    # update layercontents.plist
+    subpathWritePlist(newLayerMapping, ufoPath, "layercontents.plist")
     return newLayerMapping
 
 def _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers):
@@ -128,13 +130,13 @@ def _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers):
     for subDirectory in oldLayers.values():
         os.mkdir(os.path.join(directory, subDirectory))
     assert sorted(os.listdir(directory)) == sorted(oldLayers.values())
-    newLayers = normalizeGlyphsDirectoryNames(directory, oldLayers)
-    assert sorted(os.listdir(directory)) == sorted(newLayers.values())
+    subpathWritePlist(oldLayers, directory, "layercontents.plist")
+    newLayers = normalizeGlyphsDirectoryNames(directory)
+    listing = os.listdir(directory)
+    listing.remove("layercontents.plist")
+    assert sorted(listing) == sorted(newLayers.values())
     shutil.rmtree(directory)
     return newLayers == expectedLayers
-
-def writeLayerContents(ufoPath, layerMapping):
-    subpathWritePlist(layerMapping, ufoPath, "layercontents.plist")
 
 # ------
 # Glyphs
@@ -213,7 +215,9 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
     assert sorted(os.listdir(fullLayerDirectory)) == sorted(oldGlyphMapping.values())
     subpathWritePlist(oldGlyphMapping, directory, layerDirectory, "contents.plist")
     newGlyphMapping = normalizeGlyphNames(directory, layerDirectory)
-    assert sorted(os.listdir(fullLayerDirectory)) == sorted(newGlyphMapping.values() + ["contents.plist"])
+    listing = os.listdir(fullLayerDirectory)
+    listing.remove("contents.plist")
+    assert sorted(listing) == sorted(newGlyphMapping.values())
     assert subpathReadPlist(directory, layerDirectory, "contents.plist") == newGlyphMapping
     shutil.rmtree(directory)
     return newGlyphMapping == expectedGlyphMapping
