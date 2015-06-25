@@ -61,6 +61,7 @@ def normalizeUFO(ufoPath, outputPath=None):
         # rename directories
         layerMapping = normalizeGlyphsDirectoryNames(ufoPath, layerMapping)
         writeLayerContents(ufoPath, layerMapping)
+    # normalize various files
 
 # ------
 # Layers
@@ -133,8 +134,7 @@ def _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers):
     return newLayers == expectedLayers
 
 def writeLayerContents(ufoPath, layerMapping):
-    path = subpathJoin(ufoPath, "layercontents.plist")
-    plistlib.writePlist(layerMapping, path)
+    subpathWritePlist(layerMapping, ufoPath, "layercontents.plist")
 
 # ------
 # Glyphs
@@ -164,6 +164,8 @@ def subpathExists(ufoPath, *subpath):
     path = subpathJoin(ufoPath, *subpath)
     return os.path.exists(path)
 
+# read
+
 def subpathReadFile(ufoPath, *subpath):
     path = subpathJoin(ufoPath, *subpath)
     f = open(path, "rb")
@@ -174,6 +176,22 @@ def subpathReadFile(ufoPath, *subpath):
 def subpathReadPlist(ufoPath, *subpath):
     text = subpathReadFile(ufoPath, *subpath)
     return plistlib.readPlistFromString(text)
+
+# write
+
+def subpathWriteFile(data, ufoPath, *subpath):
+    path = subpathJoin(ufoPath, *subpath)
+    existing = subpathReadFile(path)
+    if data != existing:
+        f = open(path, "wb")
+        f.write(data)
+        f.close()
+
+def subpathWritePlist(data, ufoPath, *subpath):
+    data = plistlib.writePlistToString(data)
+    subpathWriteFile(data, ufoPath, *subpath)
+
+# rename
 
 def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
     if isinstance(fromSubpath, basestring):
