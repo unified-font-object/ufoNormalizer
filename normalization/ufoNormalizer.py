@@ -48,7 +48,7 @@ def normalizeUFO(ufoPath, outputPath=None):
     # normalize layers
     if formatVersion < 3:
         if subpathExists(ufoPath, "glyphs"):
-            normalizeUFO1And2GlyphsDirectory(ufoPath, fontLib)
+            normalizeUFO1And2GlyphsDirectory(ufoPath)
     else:
         # INVALID DATA POSSIBILITY: directory for layer name may not exist
         # INVALID DATA POSSIBILITY: directory may not be stored in layer contents
@@ -101,7 +101,7 @@ def normalizeGlyphsDirectoryNames(ufoPath, oldLayerMapping):
     # INVALID DATA POSSIBILITY: public.default used for directory other than "glyphs"
     newLayerMapping = {}
     newLayerDirectories = set()
-    for layerName, oldLayerDirectory in oldLayerMapping.items():
+    for layerName, oldLayerDirectory in sorted(oldLayerMapping.items()):
         if oldLayerDirectory == "glyphs":
             newLayerDirectory = "glyphs"
         else:
@@ -140,11 +140,83 @@ def writeLayerContents(ufoPath, layerMapping):
 # Glyphs
 # ------
 
-def normalizeUFO1And2GlyphsDirectory(ufoPath, fontLib):
+def normalizeUFO1And2GlyphsDirectory(ufoPath):
     pass
 
 def normalizeGlyphsDirectory(ufoPath, layerDirectory):
     pass
+
+def normalizeGlyphNames(ufoPath, layerDirectory):
+    """
+    non-standard file names
+    -----------------------
+    >>> oldNames = {
+    ...     "A" : "a.glif",
+    ...     "B" : "b.glif"
+    ... }
+    >>> expectedNames = {
+    ...     "A" : "A_.glif",
+    ...     "B" : "B_.glif"
+    ... }
+    >>> _test_normalizeGlyphNames(oldNames, expectedNames)
+    True
+
+    old file with same name as new file
+    -----------------------------------
+    >>> oldNames = {
+    ...     "one" : "two.glif",
+    ...     "two" : "three.glif"
+    ... }
+    >>> expectedNames = {
+    ...     "one" : "one.glif",
+    ...     "two" : "two.glif"
+    ... }
+    >>> _test_normalizeGlyphNames(oldNames, expectedNames)
+    True
+    """
+    # INVALID DATA POSSIBILITY: no contents.plist
+    # INVALID DATA POSSIBILITY: file for glyph name may not exist
+    # INVALID DATA POSSIBILITY: file for glyph may not be stored in contents
+    if not subpathExists(ufoPath, layerDirectory, "contents.plist"):
+        return
+    oldGlyphMapping = subpathReadPlist(ufoPath, layerDirectory, "contents.plist")
+    newGlyphMapping = {}
+    newFileNames = set()
+    for glyphName in sorted(oldGlyphMapping.keys()):
+        newFileName = userNameToFileName(unicode(glyphName), newFileNames, suffix=".glif")
+        newFileNames.add(newFileName)
+        newGlyphMapping[glyphName] = newFileName
+    # don't do a direct rewrite in case an old file has
+    # the same name as a new file.
+    fromTempMapping = {}
+    for index, (glyphName, newFileName) in enumerate(sorted(newGlyphMapping.items())):
+        oldFileName = oldGlyphMapping[glyphName]
+        if newFileName == oldFileName:
+            continue
+        tempFileName = "org.unifiedfontobject.normalizer.%d" % index
+        subpathRenameFile(ufoPath, (layerDirectory, oldFileName), (layerDirectory, tempFileName))
+        fromTempMapping[tempFileName] = newFileName
+    for tempFileName, newFileName in fromTempMapping.items():
+        subpathRenameFile(ufoPath, (layerDirectory, tempFileName), (layerDirectory, newFileName))
+    # update contents.plist
+    subpathWritePlist(newGlyphMapping, ufoPath, layerDirectory, "contents.plist")
+    return newGlyphMapping
+
+def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
+    import tempfile
+    directory = tempfile.mkdtemp()
+    layerDirectory = "glyphs"
+    fullLayerDirectory = subpathJoin(directory, layerDirectory)
+    os.mkdir(fullLayerDirectory)
+    for fileName in oldGlyphMapping.values():
+        subpathWriteFile("", directory, layerDirectory, fileName)
+    assert sorted(os.listdir(fullLayerDirectory)) == sorted(oldGlyphMapping.values())
+    subpathWritePlist(oldGlyphMapping, directory, layerDirectory, "contents.plist")
+    newGlyphMapping = normalizeGlyphNames(directory, layerDirectory)
+    assert sorted(os.listdir(fullLayerDirectory)) == sorted(newGlyphMapping.values() + ["contents.plist"])
+    assert subpathReadPlist(directory, layerDirectory, "contents.plist") == newGlyphMapping
+    shutil.rmtree(directory)
+    return newGlyphMapping == expectedGlyphMapping
 
 # ---------------
 # Path Operations
@@ -181,7 +253,10 @@ def subpathReadPlist(ufoPath, *subpath):
 
 def subpathWriteFile(data, ufoPath, *subpath):
     path = subpathJoin(ufoPath, *subpath)
-    existing = subpathReadFile(path)
+    if subpathExists(ufoPath, *subpath):
+        existing = subpathReadFile(ufoPath, *subpath)
+    else:
+        existing = None
     if data != existing:
         f = open(path, "wb")
         f.write(data)
@@ -202,8 +277,14 @@ def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
     outPath = subpathJoin(ufoPath, *toSubpath)
     shutil.move(inPath, outPath)
 
-def subpathRenameFile(ufoPath, *subpath):
-    pass
+def subpathRenameFile(ufoPath, fromSubpath, toSubpath):
+    if isinstance(fromSubpath, basestring):
+        fromSubpath = [fromSubpath]
+    if isinstance(toSubpath, basestring):
+        toSubpath = [toSubpath]
+    inPath = subpathJoin(ufoPath, *fromSubpath)
+    outPath = subpathJoin(ufoPath, *toSubpath)
+    os.rename(inPath, outPath)
 
 # ----------------------
 # User Name to File Name
