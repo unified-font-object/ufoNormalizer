@@ -54,7 +54,18 @@ def normalizeUFO(ufoPath, outputPath=None):
             normalizeUFO1And2GlyphsDirectory(ufoPath)
     else:
         normalizeGlyphsDirectoryNames(ufoPath)
-    # normalize various files
+    # normalize top level files
+    normalizeMetaInfoPlist(ufoPath)
+    if subpathExists(ufoPath, "fontinfo.plist"):
+        normalizeFontInfoPlist(ufoPath)
+    if subpathExists(ufoPath, "groups.plist"):
+        normalizeGroupsPlist(ufoPath)
+    if subpathExists(ufoPath, "kerning.plist"):
+        normalizeKerningPlist(ufoPath)
+    if subpathExists(ufoPath, "layercontents.plist"):
+        normalizeLayerContentsPlist(ufoPath)
+    if subpathExists(ufoPath, "lib.plist"):
+        normalizeLibPlist(ufoPath)
 
 # ------
 # Layers
@@ -225,10 +236,60 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
     shutil.rmtree(directory)
     return newGlyphMapping == expectedGlyphMapping
 
+# ---------------
+# Top-Level Files
+# ---------------
+
+# These are broken into seperate, file specific
+# functions for clarity and in case file specific
+# normalization (such as filtering default values)
+# needs to occur.
+
+def _normalizePlistFile(ufoPath, *subpath):
+    data = subpathReadPlist(ufoPath, *subpath)
+    text = normalizePropertyList(data)
+    subpathWriteFile(text, ufoPath, *subpath)
+
+# metainfo.plist
+
+def normalizeMetaInfoPlist(ufoPath):
+    _normalizePlistFile(ufoPath, "metainfo.plist")
+
+# fontinfo.plist
+
+def normalizeFontInfoPlist(ufoPath):
+    _normalizePlistFile(ufoPath, "fontinfo.plist")
+
+# groups.plist
+
+def normalizeGroupsPlist(ufoPath):
+    _normalizePlistFile(ufoPath, "groups.plist")
+
+# kerning.plist
+
+def normalizeKerningPlist(ufoPath):
+    _normalizePlistFile(ufoPath, "kerning.plist")
+
+# layercontents.plist
+
+def normalizeLayerContentsPlist(ufoPath):
+    _normalizePlistFile(ufoPath, "layercontents.plist")
+
+# lib.plist
+
+def normalizeLibPlist(ufoPath):
+    _normalizePlistFile(ufoPath, "lib.plist")
 
 # -----------------
 # XML Normalization
 # -----------------
+
+# Property List
+
+def normalizePropertyList(data):
+    writer = XMLWriter(isPropertyList=True)
+    writer.propertyListObject(data)
+    return writer.getText()
 
 # GLIF
 
@@ -238,18 +299,22 @@ def normalizeGLIF(tree):
 # XML Writer
 
 xmlDeclaration = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+plistDocType = "<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
 xmlTextMaxLineLength = 70
 xmlIndent = u"\t"
 xmlLineBreak = u"\n"
+# TO DO: define global attribute order
 xmlAttributeOrder = u"""
 """.strip().splitlines()
 
 class XMLWriter(object):
 
-    def __init__(self, propertyList=False, declaration=xmlDeclaration):
+    def __init__(self, isPropertyList=False, declaration=xmlDeclaration):
         self._lines = []
         if declaration:
             self._lines.append(declaration)
+        if isPropertyList:
+            self._lines.append(plistDocType)
         self._indentLevel = 0
         self._stack = []
 
@@ -542,22 +607,34 @@ def xmlConvertInt(value):
 # ---------------
 
 def duplicateUFO(inPath, outPath):
+    """
+    Duplicate an entire UFO.
+    """
     if os.path.exists(outPath):
         shutil.rmtree(outPath)
     shutil.copytree(inPath, outPath)
 
 def subpathJoin(ufoPath, *subpath):
+    """
+    Join path parts.
+    """
     if not isinstance(subpath, basestring):
         subpath = os.path.join(*subpath)
     return os.path.join(ufoPath, subpath)
 
 def subpathExists(ufoPath, *subpath):
+    """
+    Get a boolean indicating if a path exists.
+    """
     path = subpathJoin(ufoPath, *subpath)
     return os.path.exists(path)
 
 # read
 
 def subpathReadFile(ufoPath, *subpath):
+    """
+    Read the contents of a file.
+    """
     path = subpathJoin(ufoPath, *subpath)
     f = open(path, "rb")
     text = f.read()
@@ -565,12 +642,23 @@ def subpathReadFile(ufoPath, *subpath):
     return text
 
 def subpathReadPlist(ufoPath, *subpath):
+    """
+    Read the contents of a property list
+    and convert it into a Python object.
+    """
     text = subpathReadFile(ufoPath, *subpath)
     return plistlib.readPlistFromString(text)
 
 # write
 
 def subpathWriteFile(data, ufoPath, *subpath):
+    """
+    Write data to a file.
+
+    This will only modify the file if the
+    file contains data that is different
+    from the new data.
+    """
     path = subpathJoin(ufoPath, *subpath)
     if subpathExists(ufoPath, *subpath):
         existing = subpathReadFile(ufoPath, *subpath)
@@ -582,21 +670,23 @@ def subpathWriteFile(data, ufoPath, *subpath):
         f.close()
 
 def subpathWritePlist(data, ufoPath, *subpath):
+    """
+    Write a Python object to a property list.
+    THIS DOES NOT WRITE NORMALIZED OUTPUT.
+
+    This will only modify the file if the
+    file contains data that is different
+    from the new data.
+    """
     data = plistlib.writePlistToString(data)
     subpathWriteFile(data, ufoPath, *subpath)
 
 # rename
 
-def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
-    if isinstance(fromSubpath, basestring):
-        fromSubpath = [fromSubpath]
-    if isinstance(toSubpath, basestring):
-        toSubpath = [toSubpath]
-    inPath = subpathJoin(ufoPath, *fromSubpath)
-    outPath = subpathJoin(ufoPath, *toSubpath)
-    shutil.move(inPath, outPath)
-
 def subpathRenameFile(ufoPath, fromSubpath, toSubpath):
+    """
+    Rename a file.
+    """
     if isinstance(fromSubpath, basestring):
         fromSubpath = [fromSubpath]
     if isinstance(toSubpath, basestring):
@@ -604,6 +694,18 @@ def subpathRenameFile(ufoPath, fromSubpath, toSubpath):
     inPath = subpathJoin(ufoPath, *fromSubpath)
     outPath = subpathJoin(ufoPath, *toSubpath)
     os.rename(inPath, outPath)
+
+def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
+    """
+    Rename a directory.
+    """
+    if isinstance(fromSubpath, basestring):
+        fromSubpath = [fromSubpath]
+    if isinstance(toSubpath, basestring):
+        toSubpath = [toSubpath]
+    inPath = subpathJoin(ufoPath, *fromSubpath)
+    outPath = subpathJoin(ufoPath, *toSubpath)
+    shutil.move(inPath, outPath)
 
 # ----------------------
 # User Name to File Name
@@ -810,3 +912,11 @@ def handleClash2(existing=[], prefix="", suffix=""):
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
+
+    inPath = "/Users/talleming/Desktop/test/Balto-Book.ufo"
+    outPath = "/Users/talleming/Desktop/test/Balto-Book-n.ufo"
+
+    if os.path.exists(outPath):
+        shutil.rmtree(outPath)
+
+    normalizeUFO(inPath, outPath)
