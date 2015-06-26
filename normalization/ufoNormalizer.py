@@ -2,6 +2,8 @@ import os
 import shutil
 from xml.etree import cElementTree as ET
 import plistlib
+import textwrap
+import datetime
 
 
 """
@@ -12,6 +14,8 @@ import plistlib
   directories/files/elements/attributes and fix glaring errors.
   the places where these could happen are being marked with
   "# INVALID DATA POSSIBILITY"
+- things that need to be improved are marked with "# TO DO"
+- refactor the plist writing to use a XMLWriter subclass
 """
 
 
@@ -222,6 +226,324 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
     shutil.rmtree(directory)
     return newGlyphMapping == expectedGlyphMapping
 
+
+# -----------------
+# XML Normalization
+# -----------------
+
+# Property List
+
+# TO DO: This should be a subclass of XML Writer instead of a bunch of functions.
+
+def normalizePropertyList(data):
+    writer = XMLWriter()
+    _normalizePLISTUnknown(data, writer)
+    return writer.getText()
+
+def _normalizePLISTUnknown(data, writer):
+    """
+    Array:
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown([], writer)
+    >>> writer.getText()
+    u'<array>\\n</array>'
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown(["a"], writer)
+    >>> writer.getText()
+    u'<array>\\n\\t<string>a</string>\\n</array>'
+
+    Dict:
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown({}, writer)
+    >>> writer.getText()
+    u'<dict>\\n</dict>'
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown({"a" : "b"}, writer)
+    >>> writer.getText()
+    u'<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>'
+
+    String:
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown("a", writer)
+    >>> writer.getText()
+    u'<string>a</string>'
+
+    Boolean:
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown(True, writer)
+    >>> writer.getText()
+    u'<true/>'
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown(False, writer)
+    >>> writer.getText()
+    u'<false/>'
+
+    Float:
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown(1.1, writer)
+    >>> writer.getText()
+    u'<real>1.1</real>'
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown(-1.1, writer)
+    >>> writer.getText()
+    u'<real>-1.1</real>'
+
+    Integer:
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown(1, writer)
+    >>> writer.getText()
+    u'<integer>1</integer>'
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown(-1, writer)
+    >>> writer.getText()
+    u'<integer>-1</integer>'
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizePLISTUnknown(0, writer)
+    >>> writer.getText()
+    u'<integer>0</integer>'
+
+    Date:
+    # TO DO: need doctests
+
+    Data:
+
+    >>> writer = XMLWriter(declaration=None)
+    >>> data = plistlib.Data("abc")
+    >>> _normalizePLISTUnknown(data, writer)
+    >>> writer.getText()
+    u'<data>\\n\\tYWJj\\n</data>'
+    """
+    if data is None:
+        return
+    if isinstance(data, (list, tuple)):
+        _normalizePLISTArray(data, writer)
+    elif isinstance(data, dict):
+        _normalizePLISTDict(data, writer)
+    elif isinstance(data, basestring):
+        _normalizePLISTString(data, writer)
+    elif isinstance(data, bool):
+        _normalizePLISTBoolean(data, writer)
+    elif isinstance(data, (int, long)):
+        _normalizePLISTInt(data, writer)
+    elif isinstance(data, float):
+        _normalizePLISTFloat(data, writer)
+    elif isinstance(data, plistlib.Data):
+        _normalizePLISTData(data, writer)
+    elif isinstance(data, datetime.datetime):
+        _normalizePLISTDate(data, writer)
+    else:
+        raise UFONormalizerError("Unknown data type in property list: %s" % repr(type(data)))
+
+def _normalizePLISTArray(data, writer):
+    writer.beginElement("array")
+    for value in data:
+        _normalizePLISTUnknown(value, writer)
+    writer.endElement("array")
+
+def _normalizePLISTDict(data, writer):
+    writer.beginElement("dict")
+    for key, value in sorted(data.items()):
+        writer.simpleElement("key", value=key)
+        _normalizePLISTUnknown(value, writer)
+    writer.endElement("dict")
+
+def _normalizePLISTString(data, writer):
+    writer.simpleElement("string", value=data)
+
+def _normalizePLISTBoolean(data, writer):
+    if data:
+        writer.simpleElement("true")
+    else:
+        writer.simpleElement("false")
+
+def _normalizePLISTFloat(data, writer):
+    data = xmlConvertFloat(data)
+    writer.simpleElement("real", value=data)
+
+def _normalizePLISTInt(data, writer):
+    data = xmlConvertInt(data)
+    writer.simpleElement("integer", value=data)
+
+def _normalizePLISTDate(data, writer):
+    # TO DO: implement this. refer to plistlib.py.
+    raise NotImplementedError
+
+def _normalizePLISTData(data, writer):
+    writer.beginElement("data")
+    data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
+    for line in data.splitlines():
+        writer.raw(line)
+    writer.endElement("data")
+
+# GLIF
+
+def normalizeGLIF(tree):
+    pass
+
+# XML Writer
+
+xmlTextMaxLineLength = 70
+xmlIndent = u"\t"
+xmlLineBreak = u"\n"
+xmlAttributeOrder = u"""
+""".strip().splitlines()
+
+class XMLWriter(object):
+
+    def __init__(self, declaration=u"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"):
+        self._lines = []
+        if declaration:
+            self._lines.append(declaration)
+        self._indentLevel = 0
+        self._stack = []
+
+    # text retrieval
+
+    def getText(self):
+        assert not self._stack
+        return xmlLineBreak.join(self._lines)
+
+    # writing
+
+    def raw(self, line):
+        if self._indentLevel:
+            i = xmlIndent * self._indentLevel
+            line = i + line
+        self._lines.append(line)
+
+    def data(self, text):
+        line = "<![CDATA[%s]]>" % text
+        self.raw(line)
+
+    def text(self, text):
+        text = text.strip()
+        paragraphs = []
+        for paragraph in text.splitlines():
+            if not paragraph:
+                paragraphs.append("")
+            else:
+                paragraph = textwrap.wrap(text,
+                    width=xmlTextMaxLineLength,
+                    expand_tabs=False,
+                    replace_whitespace=False,
+                    drop_whitespace=False,
+                    break_long_words=False,
+                    break_on_hyphens=False
+                )
+                paragraphs.append(paragraph)
+
+    def simpleElement(self, tag, attrs={}, value=None):
+        if attrs:
+            attrs = self.attributesToString(attrs)
+            line = "<%s %s" % (tag, attrs)
+        else:
+            line = "<%s" % tag
+        if value is not None:
+            line = "%s>%s</%s>" % (line, value, tag)
+        else:
+            line = "%s/>" % line
+        self.raw(line)
+
+    def beginElement(self, tag, attrs={}):
+        if attrs:
+            attrs = self.attributesToString(attrs)
+            line = "<%s %s>" % (tag, attrs)
+        else:
+            line = "<%s>" % tag
+        self.raw(line)
+        self._stack.append(tag)
+        self._indentLevel += 1
+
+    def endElement(self, tag):
+        assert self._stack
+        assert self._stack[-1] == tag
+        del self._stack[-1]
+        self._indentLevel -= 1
+        line = "</%s>" % (tag)
+        self.raw(line)
+
+    # support
+
+    def attributesToString(self, attrs):
+        """
+        TO DO: need doctests
+        """
+        # TO DO: this ordering could probably be done more efficiently
+        # maybe make the xmlAttributeOrder a dict {attr : index}
+        # and use xmlAttributeOrder.get(attr, 1000000000000) instead
+        # of the expensive index, two list, multiple iteration
+        ordered = []
+        unordered = []
+        for attr, value in attrs.items():
+            if attr in xmlAttributeOrder:
+                index = xmlAttributeOrder.index(attr)
+                ordered.append((index, attr, value))
+            else:
+                unordered.append((attr, value))
+        compiled = [(attr, value) for index, attr, value in sorted(ordered)]
+        compiled += sorted(unordered)
+        formatted = []
+        for attr, value in compiled:
+            attr = xmlEscapeAttribute(attr)
+            value = xmlConvertValue(value)
+            pair = u"%s=%s" % (attr, value)
+            formatted.append(pair)
+        return u" ".join(formatted)
+
+
+def xmlEscapeText(text):
+    """
+    TO DO: need doctests
+    """
+    text = text.replace(u"&", u"&amp;")
+    text = text.replace(u"<", u"&lt;")
+    text = text.replace(u">", u"&gt;")
+    return text
+
+def xmlEscapeAttribute(text):
+    """
+    TO DO: need doctests
+    """
+    text = xmlEscapeText(text)
+    text = text.replace(u"\"", u"&quot;")
+    return text
+
+def xmlConvertValue(value):
+    """
+    TO DO: need doctests
+    """
+    if isinstance(value, float):
+        return xmlConvertFloat(value)
+    elif isinstance(value, int):
+        return xmlConvertInt(value)
+    value = xmlEscapeText(value)
+    return value
+
+def xmlConvertFloat(value):
+    """
+    TO DO: need doctests
+    """
+    # TO DO: needs to be handled according to the spec
+    return str(value)
+
+def xmlConvertInt(value):
+    """
+    TO DO: need doctests
+    """
+    return str(value)
+
 # ---------------
 # Path Operations
 # ---------------
@@ -295,7 +617,6 @@ def subpathRenameFile(ufoPath, fromSubpath, toSubpath):
 # ----------------------
 #
 # This was taken directly from the UFO 3 specification.
-
 
 illegalCharacters = "\" * + / : < > ? [ \ ] | \0".split(" ")
 illegalCharacters += [chr(i) for i in range(1, 32)]
