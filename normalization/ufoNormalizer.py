@@ -157,10 +157,15 @@ def _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers):
 # ------
 
 def normalizeUFO1And2GlyphsDirectory(ufoPath):
-    pass
+    glyphMapping = normalizeGlyphNames(ufoPath, "glyphs")
+    for fileName in sorted(glyphMapping.values()):
+        normalizeGLIF(ufoPath, "glyphs", fileName)
 
 def normalizeGlyphsDirectory(ufoPath, layerDirectory):
-    pass
+    # TO DO: normalize layerinfo.plist
+    glyphMapping = normalizeGlyphNames(ufoPath, layerDirectory)
+    for fileName in glyphMapping.values():
+        normalizeGLIF(ufoPath, layerDirectory, fileName)
 
 def normalizeGlyphNames(ufoPath, layerDirectory):
     """
@@ -194,7 +199,7 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
     # INVALID DATA POSSIBILITY: file for glyph name may not exist
     # INVALID DATA POSSIBILITY: file for glyph may not be stored in contents
     if not subpathExists(ufoPath, layerDirectory, "contents.plist"):
-        return
+        return {}
     oldGlyphMapping = subpathReadPlist(ufoPath, layerDirectory, "contents.plist")
     newGlyphMapping = {}
     newFileNames = set()
@@ -293,8 +298,66 @@ def normalizePropertyList(data):
 
 # GLIF
 
-def normalizeGLIF(tree):
-    pass
+def normalizeGLIF(ufoPath, *subpath):
+    test = False
+    if subpath[-1] == "a.glif":
+        test = True
+    # read and parse
+    glifPath = subpathJoin(ufoPath, *subpath)
+    text = subpathReadFile(ufoPath, *subpath)
+    tree = ET.fromstring(text)
+    glifVersion = tree.attrib.get("format")
+    if glifVersion is None:
+        raise UFONormalizerError(u"Undefined GLIF format: %s" % glifPath)
+    name = tree.attrib.get("name")
+    # start the writer
+    writer = XMLWriter()
+    # grab the top-level elements
+    advance = None
+    unicodes = []
+    note = None
+    image = None
+    guidelines = []
+    anchors = []
+    outline = None
+    lib = None
+    unknownElements = []
+    for element in tree:
+        tag = element.tag
+        if tag == "advance":
+            advance = element
+        elif tag == "unicode":
+            unicodes.append(element)
+        elif tag == "note":
+            note = element
+        elif tag == "image":
+            image = element
+        elif tag == "guideline":
+            guidelines.append(element)
+        elif tag == "anchor":
+            anchors.append(element)
+        elif tag == "outline":
+            outline = element
+        elif lib == "lib":
+            lib = element
+    # write the data
+    writer.beginElement("glyph", attrs=dict(name=name, format=glifVersion))
+    for element in unicodes:
+        _normalizeGlifAdvance(element, writer)
+    writer.endElement("glyph")
+
+    # if test:
+    #     print tree
+    text = writer.getText()
+    subpathWriteFile(text, ufoPath, *subpath)
+
+def _normalizeGlifAdvance(element, writer):
+    # TO DO: properly format hex value
+    # INVALID DATA POSSIBILITY: no hex value
+    # INVALID DATA POSSIBILITY: invalid hex value
+    v = element.attrib["hex"]
+    writer.simpleElement("unicode", attrs=dict(hex=v))
+
 
 # XML Writer
 
@@ -305,6 +368,8 @@ xmlIndent = u"\t"
 xmlLineBreak = u"\n"
 # TO DO: define global attribute order
 xmlAttributeOrder = u"""
+name
+format
 """.strip().splitlines()
 
 class XMLWriter(object):
@@ -556,7 +621,7 @@ class XMLWriter(object):
         for attr, value in compiled:
             attr = xmlEscapeAttribute(attr)
             value = xmlConvertValue(value)
-            pair = u"%s=%s" % (attr, value)
+            pair = u"%s=\"%s\"" % (attr, value)
             formatted.append(pair)
         return u" ".join(formatted)
 
