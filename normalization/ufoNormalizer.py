@@ -15,7 +15,6 @@ import datetime
   the places where these could happen are being marked with
   "# INVALID DATA POSSIBILITY"
 - things that need to be improved are marked with "# TO DO"
-- refactor the plist writing to use a XMLWriter subclass
 """
 
 
@@ -231,162 +230,6 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
 # XML Normalization
 # -----------------
 
-# Property List
-
-# TO DO: This should be a subclass of XML Writer instead of a bunch of functions.
-
-def normalizePropertyList(data):
-    writer = XMLWriter()
-    _normalizePLISTUnknown(data, writer)
-    return writer.getText()
-
-def _normalizePLISTUnknown(data, writer):
-    """
-    Array:
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown([], writer)
-    >>> writer.getText()
-    u'<array>\\n</array>'
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown(["a"], writer)
-    >>> writer.getText()
-    u'<array>\\n\\t<string>a</string>\\n</array>'
-
-    Dict:
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown({}, writer)
-    >>> writer.getText()
-    u'<dict>\\n</dict>'
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown({"a" : "b"}, writer)
-    >>> writer.getText()
-    u'<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>'
-
-    String:
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown("a", writer)
-    >>> writer.getText()
-    u'<string>a</string>'
-
-    Boolean:
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown(True, writer)
-    >>> writer.getText()
-    u'<true/>'
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown(False, writer)
-    >>> writer.getText()
-    u'<false/>'
-
-    Float:
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown(1.1, writer)
-    >>> writer.getText()
-    u'<real>1.1</real>'
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown(-1.1, writer)
-    >>> writer.getText()
-    u'<real>-1.1</real>'
-
-    Integer:
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown(1, writer)
-    >>> writer.getText()
-    u'<integer>1</integer>'
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown(-1, writer)
-    >>> writer.getText()
-    u'<integer>-1</integer>'
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizePLISTUnknown(0, writer)
-    >>> writer.getText()
-    u'<integer>0</integer>'
-
-    Date:
-    # TO DO: need doctests
-
-    Data:
-
-    >>> writer = XMLWriter(declaration=None)
-    >>> data = plistlib.Data("abc")
-    >>> _normalizePLISTUnknown(data, writer)
-    >>> writer.getText()
-    u'<data>\\n\\tYWJj\\n</data>'
-    """
-    if data is None:
-        return
-    if isinstance(data, (list, tuple)):
-        _normalizePLISTArray(data, writer)
-    elif isinstance(data, dict):
-        _normalizePLISTDict(data, writer)
-    elif isinstance(data, basestring):
-        _normalizePLISTString(data, writer)
-    elif isinstance(data, bool):
-        _normalizePLISTBoolean(data, writer)
-    elif isinstance(data, (int, long)):
-        _normalizePLISTInt(data, writer)
-    elif isinstance(data, float):
-        _normalizePLISTFloat(data, writer)
-    elif isinstance(data, plistlib.Data):
-        _normalizePLISTData(data, writer)
-    elif isinstance(data, datetime.datetime):
-        _normalizePLISTDate(data, writer)
-    else:
-        raise UFONormalizerError("Unknown data type in property list: %s" % repr(type(data)))
-
-def _normalizePLISTArray(data, writer):
-    writer.beginElement("array")
-    for value in data:
-        _normalizePLISTUnknown(value, writer)
-    writer.endElement("array")
-
-def _normalizePLISTDict(data, writer):
-    writer.beginElement("dict")
-    for key, value in sorted(data.items()):
-        writer.simpleElement("key", value=key)
-        _normalizePLISTUnknown(value, writer)
-    writer.endElement("dict")
-
-def _normalizePLISTString(data, writer):
-    writer.simpleElement("string", value=data)
-
-def _normalizePLISTBoolean(data, writer):
-    if data:
-        writer.simpleElement("true")
-    else:
-        writer.simpleElement("false")
-
-def _normalizePLISTFloat(data, writer):
-    data = xmlConvertFloat(data)
-    writer.simpleElement("real", value=data)
-
-def _normalizePLISTInt(data, writer):
-    data = xmlConvertInt(data)
-    writer.simpleElement("integer", value=data)
-
-def _normalizePLISTDate(data, writer):
-    # TO DO: implement this. refer to plistlib.py.
-    raise NotImplementedError
-
-def _normalizePLISTData(data, writer):
-    writer.beginElement("data")
-    data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
-    for line in data.splitlines():
-        writer.raw(line)
-    writer.endElement("data")
-
 # GLIF
 
 def normalizeGLIF(tree):
@@ -394,6 +237,7 @@ def normalizeGLIF(tree):
 
 # XML Writer
 
+xmlDeclaration = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 xmlTextMaxLineLength = 70
 xmlIndent = u"\t"
 xmlLineBreak = u"\n"
@@ -402,7 +246,7 @@ xmlAttributeOrder = u"""
 
 class XMLWriter(object):
 
-    def __init__(self, declaration=u"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"):
+    def __init__(self, propertyList=False, declaration=xmlDeclaration):
         self._lines = []
         if declaration:
             self._lines.append(declaration)
@@ -473,6 +317,155 @@ class XMLWriter(object):
         self._indentLevel -= 1
         line = "</%s>" % (tag)
         self.raw(line)
+
+    # property list
+
+    def propertyListObject(self, data):
+        """
+        Array:
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject([])
+        >>> writer.getText()
+        u'<array>\\n</array>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(["a"])
+        >>> writer.getText()
+        u'<array>\\n\\t<string>a</string>\\n</array>'
+
+        Dict:
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject({})
+        >>> writer.getText()
+        u'<dict>\\n</dict>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject({"a" : "b"})
+        >>> writer.getText()
+        u'<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>'
+
+        String:
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject("a")
+        >>> writer.getText()
+        u'<string>a</string>'
+
+        Boolean:
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(True)
+        >>> writer.getText()
+        u'<true/>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(False)
+        >>> writer.getText()
+        u'<false/>'
+
+        Float:
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(1.1)
+        >>> writer.getText()
+        u'<real>1.1</real>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(-1.1)
+        >>> writer.getText()
+        u'<real>-1.1</real>'
+
+        Integer:
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(1)
+        >>> writer.getText()
+        u'<integer>1</integer>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(-1)
+        >>> writer.getText()
+        u'<integer>-1</integer>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(0)
+        >>> writer.getText()
+        u'<integer>0</integer>'
+
+        Date:
+        # TO DO: need doctests
+
+        Data:
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> data = plistlib.Data("abc")
+        >>> writer.propertyListObject(data)
+        >>> writer.getText()
+        u'<data>\\n\\tYWJj\\n</data>'
+        """
+        if data is None:
+            return
+        if isinstance(data, (list, tuple)):
+            self._plistArray(data)
+        elif isinstance(data, dict):
+            self._plistDict(data)
+        elif isinstance(data, basestring):
+            self._plistString(data)
+        elif isinstance(data, bool):
+            self._plistBoolean(data)
+        elif isinstance(data, (int, long)):
+            self._plistInt(data)
+        elif isinstance(data, float):
+            self._plistFloat(data)
+        elif isinstance(data, plistlib.Data):
+            self._plistData(data)
+        elif isinstance(data, datetime.datetime):
+            self._plistDate(data)
+        else:
+            raise UFONormalizerError("Unknown data type in property list: %s" % repr(type(data)))
+
+    def _plistArray(self, data):
+        self.beginElement("array")
+        for value in data:
+            self.propertyListObject(value)
+        self.endElement("array")
+
+    def _plistDict(self, data):
+        self.beginElement("dict")
+        for key, value in sorted(data.items()):
+            self.simpleElement("key", value=key)
+            self.propertyListObject(value)
+        self.endElement("dict")
+
+    def _plistString(self, data):
+        self.simpleElement("string", value=data)
+
+    def _plistBoolean(self, data):
+        if data:
+            self.simpleElement("true")
+        else:
+            self.simpleElement("false")
+
+    def _plistFloat(self, data):
+        data = xmlConvertFloat(data)
+        self.simpleElement("real", value=data)
+
+    def _plistInt(self, data):
+        data = xmlConvertInt(data)
+        self.simpleElement("integer", value=data)
+
+    def _plistDate(self, data):
+        # TO DO: implement this. refer to plistlib.py.
+        raise NotImplementedError
+
+    def _plistData(self, data):
+        self.beginElement("data")
+        data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
+        for line in data.splitlines():
+            self.raw(line)
+        self.endElement("data")
 
     # support
 
