@@ -16,6 +16,7 @@ import datetime
   "# INVALID DATA POSSIBILITY"
 - things that need to be improved are marked with "# TO DO"
 - should unknown attributes be removed in GLIF? they are right now.
+- should unknown elements be removed in GLIF? they are right now.
 - is the conversion of numbers coming from plist too naive?
 """
 
@@ -333,7 +334,6 @@ def normalizeGLIF(ufoPath, *subpath):
     anchors = []
     outline = None
     lib = None
-    unknownElements = []
     for element in tree:
         tag = element.tag
         if tag == "advance":
