@@ -562,24 +562,80 @@ def _normalizeGlifComponentFormat1(element, writer):
     """
     # INVALID DATA POSSIBILITY: no base defined
     # INVALID DATA POSSIBILITY: unknown child element
+    attrs = _normalizeGlifComponentAttributesFormat1(element)
+    writer.simpleElement("component", attrs=attrs)
+
+def _normalizeGlifComponentAttributesFormat1(element):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: no base defined
     attrs = dict(
         base=element.attrib["base"]
     )
     transformation = _normalizeGlifTransformation(element)
     attrs.update(transformation)
-    writer.simpleElement("component", attrs=attrs)
+    return attrs
 
 def _normalizeGlifOutlineFormat2(element, writer):
-    # TO DO: implement this
-    raise NotImplementedError
+    """
+    TO DO: need doctests
+    """
+    writer.beginElement("outline")
+    for subElement in element:
+        tag = subElement.tag
+        if tag == "contour":
+            _normalizeGlifContourFormat2(subElement, writer)
+        elif tag == "component":
+            _normalizeGlifComponentFormat2(subElement, writer)
+    writer.endElement("outline")
 
 def _normalizeGlifContourFormat2(element, writer):
-    # TO DO: implement this
-    raise NotImplementedError
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: unknown child element
+    # INVALID DATA POSSIBILITY: unknown point type
+    attrs = {}
+    identifier = element.attrib.get("identifier")
+    if identifier is not None:
+        attrs["identifier"] = identifier
+    writer.beginElement("contour", attrs=attrs)
+    for subElement in element:
+        tag = subElement.tag
+        if tag != "point":
+            continue
+        attrs = _normalizeGlifPointAttributesFormat2(subElement)
+        points.append(attrs)
+        writer.simpleElement("point", attrs=attrs)
+    writer.endElement("contour")
+
+def _normalizeGlifPointAttributesFormat2(element):
+    """
+    TO DO: need doctests
+    """
+    attrs = _normalizeGlifPointAttributesFormat1(element)
+    identifier = element.attrib.get("identifier")
+    if identifier is not None:
+        attrs["identifier"] = identifier
+    return attrs
 
 def _normalizeGlifComponentFormat2(element, writer):
-    # TO DO: implement this
-    raise NotImplementedError
+    """
+    TO DO: need doctests
+    """
+    attrs = _normalizeGlifComponentAttributesFormat2(element)
+    writer.simpleElement("component", attrs=attrs)
+
+def _normalizeGlifComponentAttributesFormat2(element):
+    """
+    TO DO: need doctests
+    """
+    attrs = _normalizeGlifComponentAttributesFormat1(element)
+    identifier = element.attrib.get("identifier")
+    if identifier is not None:
+        attrs["identifier"] = identifier
+    return attrs
 
 _glifDefaultTransformation = dict(
     xScale=1,
@@ -1285,10 +1341,19 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod()
 
-    inPath = "/Users/talleming/Desktop/test/Balto-Book.ufo"
-    outPath = "/Users/talleming/Desktop/test/Balto-Book-n.ufo"
+    import time
+    import glob
+    d = os.path.dirname(__file__)
+    pattern = os.path.join(d, "test", "*.ufo")
 
-    if os.path.exists(outPath):
-        shutil.rmtree(outPath)
-
-    normalizeUFO(inPath, outPath)
+    for inPath in glob.glob(pattern):
+        if inPath.endswith("-n.ufo"):
+            continue
+        outPath = os.path.splitext(inPath)[0] + "-n.ufo"
+        if os.path.exists(outPath):
+            shutil.rmtree(outPath)
+        shutil.copytree(inPath, outPath)
+        s = time.time()
+        normalizeUFO(outPath)
+        t = time.time() - s
+        print os.path.basename(inPath) + ":", t
