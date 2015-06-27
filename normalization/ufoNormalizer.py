@@ -15,6 +15,9 @@ import datetime
   the places where these could happen are being marked with
   "# INVALID DATA POSSIBILITY"
 - things that need to be improved are marked with "# TO DO"
+- should unknown attributes be removed in GLIF? they are right now.
+- is the conversion of numbers coming from plist too naive?
+- should the GLIF normalizer handle formats 1 and 2 separately?
 """
 
 
@@ -245,7 +248,7 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
 # Top-Level Files
 # ---------------
 
-# These are broken into seperate, file specific
+# These are broken into separate, file specific
 # functions for clarity and in case file specific
 # normalization (such as filtering default values)
 # needs to occur.
@@ -263,6 +266,7 @@ def normalizeMetaInfoPlist(ufoPath):
 # fontinfo.plist
 
 def normalizeFontInfoPlist(ufoPath):
+    # TO DO: normalize color strings
     _normalizePlistFile(ufoPath, "fontinfo.plist")
 
 # groups.plist
@@ -299,9 +303,16 @@ def normalizePropertyList(data):
 # GLIF
 
 def normalizeGLIF(ufoPath, *subpath):
-    test = False
-    if subpath[-1] == "a.glif":
-        test = True
+    """
+    TO DO: need doctests
+    The best way to test this is going to be have a GLIF
+    that contains all of the element types. This can be
+    round tripped and compared to make sure that the result
+    matches the expectations. This GLIF doesn't need to
+    contain a robust series of element variations as the
+    testing of those will be handled by the element
+    normalization functions.
+    """
     # read and parse
     glifPath = subpathJoin(ufoPath, *subpath)
     text = subpathReadFile(ufoPath, *subpath)
@@ -338,26 +349,205 @@ def normalizeGLIF(ufoPath, *subpath):
             anchors.append(element)
         elif tag == "outline":
             outline = element
-        elif lib == "lib":
+        elif tag == "lib":
             lib = element
     # write the data
     writer.beginElement("glyph", attrs=dict(name=name, format=glifVersion))
-    for element in unicodes:
-        _normalizeGlifAdvance(element, writer)
+    for uni in unicodes:
+        _normalizeGlifUnicode(uni, writer)
+    if advance is not None:
+        _normalizeGlifAdvance(advance, writer)
+    if image is not None:
+        _normalizeGlifImage(image, writer)
+    # TO DO: outline
+    for anchor in anchors:
+        _normalizeGlifAnchor(anchor, writer)
+    for guideline in guidelines:
+        _normalizeGlifGuideline(guideline, writer)
+    if lib is not None:
+        _normalizeGlifLib(lib, writer)
+    if note is not None:
+        _normalizeGlifNote(note, writer)
     writer.endElement("glyph")
-
-    # if test:
-    #     print tree
+    # write to the file
     text = writer.getText()
     subpathWriteFile(text, ufoPath, *subpath)
 
-def _normalizeGlifAdvance(element, writer):
+def _normalizeGlifUnicode(element, writer):
+    """
+    TO DO: need doctests
+    """
     # TO DO: properly format hex value
     # INVALID DATA POSSIBILITY: no hex value
     # INVALID DATA POSSIBILITY: invalid hex value
     v = element.attrib["hex"]
     writer.simpleElement("unicode", attrs=dict(hex=v))
 
+def _normalizeGlifAdvance(element, writer):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: value that can't be converted to float
+    w = element.attrib.get("width", "0")
+    w = float(w)
+    h = element.attrib.get("height", "0")
+    h = float(h)
+    attrs = {}
+    # filter out default value (0)
+    if w:
+        attrs["width"] = w
+    if h:
+        attrs["height"] = h
+    if not attrs:
+        return
+    writer.simpleElement("advance", attrs=attrs)
+
+def _normalizeGlifImage(element, writer):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: no file name defined
+    attrs = dict(
+        fileName=element.attrib["fileName"]
+    )
+    transformation = _normalizeGlifTransformation(element)
+    attrs.update(transformation)
+    color = element.attrib.get("color")
+    if color is not None:
+        attrs["color"] = _normalizeColorString(color)
+    writer.simpleElement("image", attrs=attrs)
+
+def _normalizeGlifAnchor(element, writer):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: no x defined
+    # INVALID DATA POSSIBILITY: no y defined
+    # INVALID DATA POSSIBILITY: x or y that can't be converted to float
+    attrs = dict(
+        x=float(element.attrib["x"]),
+        y=float(element.attrib["y"])
+    )
+    name = element.attrib.get("name")
+    if name is not None:
+        attrs["name"] = name
+    color = element.attrib.get("color")
+    if color is not None:
+        attrs["color"] = _normalizeColorString(color)
+    identifier = element.attrib.get("identifier")
+    if identifier is not None:
+        attrs["identifier"] = identifier
+    writer.simpleElement("anchor", attrs=attrs)
+
+def _normalizeGlifGuideline(element, writer):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: no x defined
+    # INVALID DATA POSSIBILITY: no y defined
+    # INVALID DATA POSSIBILITY: angle not defined following spec
+    # INVALID DATA POSSIBILITY: x, y or angle that can't be converted to float
+    attrs = dict(
+        x=float(element.attrib["x"]),
+        y=float(element.attrib["y"])
+    )
+    angle = element.attrib.get("angle")
+    if angle is not None:
+        attrs["angle"] = float(angle)
+    name = element.attrib.get("name")
+    if name is not None:
+        attrs["name"] = name
+    color = element.attrib.get("color")
+    if color is not None:
+        attrs["color"] = _normalizeColorString(color)
+    identifier = element.attrib.get("identifier")
+    if identifier is not None:
+        attrs["identifier"] = identifier
+    writer.simpleElement("guideline", attrs=attrs)
+
+def _normalizeGlifLib(element, writer):
+    obj = _convertPlistElementToObject(element[0])
+    if obj:
+        writer.beginElement("lib")
+        writer.propertyListObject(obj)
+        writer.endElement("lib")
+
+def _normalizeGlifNote(element, writer):
+    """
+    TO DO: need doctests
+    """
+    value = element.text
+    writer.beginElement("note")
+    writer.text(value)
+    writer.endElement("note")
+
+
+_glifDefaultTransformation = dict(
+    xScale=1,
+    xyScale=0,
+    yxScale=0,
+    yScale=1,
+    xOffset=0,
+    yOffset=0
+)
+
+def _normalizeGlifTransformation(element):
+    """
+    TO DO: need doctests
+    """
+    attrs = {}
+    for attr, default in _glifDefaultTransformation.items():
+        value = element.attrib.get(attr, default)
+        if value != default:
+            attrs[attr] = value
+    return attrs
+
+def _normalizeColorString(value):
+    """
+    TO DO: need doctests
+    """
+    # TO DO: implement this
+    # INVALID DATA POSSIBILITY: bad color string
+    return value
+
+def _convertPlistElementToObject(element):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: invalid value string
+    obj = None
+    tag = element.tag
+    if tag == "array":
+        obj = []
+        for subElement in element:
+            obj.append(_convertPlistElementToObject(subElement))
+    elif tag == "dict":
+        obj = {}
+        key = None
+        for subElement in element:
+            if subElement.tag == "key":
+                key = subElement.text
+            else:
+                obj[key] = _convertPlistElementToObject(subElement)
+    elif tag == "string":
+        return element.text
+    elif tag == "data":
+        # TO DO: implement this
+        # needs to convert to plistlib.Data
+        raise NotImplementedError
+    elif tag == "date":
+        # TO DO: implement this
+        # needs to convert to datetime.datetime
+        raise NotImplementedError
+    elif tag == "true":
+        return True
+    elif tag == "false":
+        return False
+    elif tag == "real":
+        return float(element.text)
+    elif tag == "integer":
+        return int(element.text)
+    return obj
 
 # XML Writer
 
@@ -370,6 +560,14 @@ xmlLineBreak = u"\n"
 xmlAttributeOrder = u"""
 name
 format
+fileName
+xScale
+xyScale
+yxScale
+yScale
+xOffset
+yOffset
+color
 """.strip().splitlines()
 
 class XMLWriter(object):
@@ -403,6 +601,7 @@ class XMLWriter(object):
 
     def text(self, text):
         text = text.strip()
+        text = xmlEscapeText(text)
         paragraphs = []
         for paragraph in text.splitlines():
             if not paragraph:
@@ -416,7 +615,9 @@ class XMLWriter(object):
                     break_long_words=False,
                     break_on_hyphens=False
                 )
-                paragraphs.append(paragraph)
+                paragraphs.extend(paragraph)
+        for line in paragraphs:
+            self.raw(line)
 
     def simpleElement(self, tag, attrs={}, value=None):
         if attrs:
