@@ -731,6 +731,10 @@ smooth
 color
 identifier
 """.strip().splitlines()
+d = {}
+for index, attr in enumerate(xmlAttributeOrder):
+    d[attr] = index
+xmlAttributeOrder = d
 
 class XMLWriter(object):
 
@@ -966,22 +970,11 @@ class XMLWriter(object):
         """
         TO DO: need doctests
         """
-        # TO DO: this ordering could probably be done more efficiently
-        # maybe make the xmlAttributeOrder a dict {attr : index}
-        # and use xmlAttributeOrder.get(attr, 1000000000000) instead
-        # of the expensive index, two list, multiple iteration
-        ordered = []
-        unordered = []
-        for attr, value in attrs.items():
-            if attr in xmlAttributeOrder:
-                index = xmlAttributeOrder.index(attr)
-                ordered.append((index, attr, value))
-            else:
-                unordered.append((attr, value))
-        compiled = [(attr, value) for index, attr, value in sorted(ordered)]
-        compiled += sorted(unordered)
+        sorter = [
+            (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in attrs.items()
+        ]
         formatted = []
-        for attr, value in compiled:
+        for index, attr, value in sorted(sorter):
             attr = xmlEscapeAttribute(attr)
             value = xmlConvertValue(value)
             pair = u"%s=\"%s\"" % (attr, value)
@@ -1365,7 +1358,7 @@ if __name__ == "__main__":
     def runProfile():
         normalizeUFO(outPath)
 
-    cProfile.run("runProfile()", sort="cumulative")
+    cProfile.run("runProfile()", sort="tottime")
     shutil.rmtree(outPath)
 
     # general test
