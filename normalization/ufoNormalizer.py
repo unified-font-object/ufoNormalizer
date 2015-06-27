@@ -17,7 +17,6 @@ import datetime
 - things that need to be improved are marked with "# TO DO"
 - should unknown attributes be removed in GLIF? they are right now.
 - is the conversion of numbers coming from plist too naive?
-- should the GLIF normalizer handle formats 1 and 2 separately?
 """
 
 
@@ -313,6 +312,7 @@ def normalizeGLIF(ufoPath, *subpath):
     testing of those will be handled by the element
     normalization functions.
     """
+    # INVALID DATA POSSIBILITY: format version that can't be converted to int
     # read and parse
     glifPath = subpathJoin(ufoPath, *subpath)
     text = subpathReadFile(ufoPath, *subpath)
@@ -320,6 +320,7 @@ def normalizeGLIF(ufoPath, *subpath):
     glifVersion = tree.attrib.get("format")
     if glifVersion is None:
         raise UFONormalizerError(u"Undefined GLIF format: %s" % glifPath)
+    glifVersion = int(glifVersion)
     name = tree.attrib.get("name")
     # start the writer
     writer = XMLWriter()
@@ -357,13 +358,19 @@ def normalizeGLIF(ufoPath, *subpath):
         _normalizeGlifUnicode(uni, writer)
     if advance is not None:
         _normalizeGlifAdvance(advance, writer)
-    if image is not None:
+    if glifVersion >= 2 and image is not None:
         _normalizeGlifImage(image, writer)
-    # TO DO: outline
-    for anchor in anchors:
-        _normalizeGlifAnchor(anchor, writer)
-    for guideline in guidelines:
-        _normalizeGlifGuideline(guideline, writer)
+    if outline is not None:
+        if glifVersion == 1:
+            _normalizeGlifOutlineFormat1(outline, writer)
+        else:
+            _normalizeGlifOutlineFormat2(outline, writer)
+    if glifVersion >= 2:
+        for anchor in anchors:
+            _normalizeGlifAnchor(anchor, writer)
+    if glifVersion >= 2:
+        for guideline in guidelines:
+            _normalizeGlifGuideline(guideline, writer)
     if lib is not None:
         _normalizeGlifLib(lib, writer)
     if note is not None:
@@ -481,6 +488,98 @@ def _normalizeGlifNote(element, writer):
     writer.text(value)
     writer.endElement("note")
 
+def _normalizeGlifOutlineFormat1(element, writer):
+    """
+    TO DO: need doctests
+    """
+    writer.beginElement("outline")
+    anchors = []
+    for subElement in element:
+        tag = subElement.tag
+        if tag == "contour":
+            anchor = _normalizeGlifContourFormat1(subElement, writer)
+            if anchor is not None:
+                anchors.append(anchor)
+        elif tag == "component":
+            _normalizeGlifComponentFormat1(subElement, writer)
+    for anchor in anchors:
+        attrs = dict(
+            type="move",
+            x=anchor["x"],
+            y=anchor["y"]
+        )
+        writer.simpleElement("point", attrs=attrs)
+    writer.endElement("outline")
+
+def _normalizeGlifContourFormat1(element, writer):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: unknown child element
+    # INVALID DATA POSSIBILITY: unknown point type
+    points = []
+    for subElement in element:
+        tag = subElement.tag
+        if tag != "point":
+            continue
+        attrs = _normalizeGlifPointAttributesFormat1(subElement)
+        points.append(attrs)
+    # anchor
+    if len(points) == 1 and points[0]["type"] == "move":
+        return points[0]
+    # contour
+    writer.beginElement("contour")
+    for point in points:
+        writer.simpleElement("point", attrs=point)
+    writer.endElement("contour")
+
+def _normalizeGlifPointAttributesFormat1(element):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: no x defined
+    # INVALID DATA POSSIBILITY: no y defined
+    # INVALID DATA POSSIBILITY: x or y that can't be converted to float
+    attrs = dict(
+        x=float(element.attrib["x"]),
+        y=float(element.attrib["y"])
+    )
+    typ = element.attrib.get("type", "offcurve")
+    if typ != "offcurve":
+        attrs["type"] = typ
+    if typ != "offcurve":
+        smooth = element.attrib.get("smooth", "no")
+        if smooth == "yes":
+            attrs["smooth"] = "yes"
+    name = element.attrib.get("name")
+    if name is not None:
+        attrs["name"] = name
+    return attrs
+
+def _normalizeGlifComponentFormat1(element, writer):
+    """
+    TO DO: need doctests
+    """
+    # INVALID DATA POSSIBILITY: no base defined
+    # INVALID DATA POSSIBILITY: unknown child element
+    attrs = dict(
+        base=element.attrib["base"]
+    )
+    transformation = _normalizeGlifTransformation(element)
+    attrs.update(transformation)
+    writer.simpleElement("component", attrs=attrs)
+
+def _normalizeGlifOutlineFormat2(element, writer):
+    # TO DO: implement this
+    raise NotImplementedError
+
+def _normalizeGlifContourFormat2(element, writer):
+    # TO DO: implement this
+    raise NotImplementedError
+
+def _normalizeGlifComponentFormat2(element, writer):
+    # TO DO: implement this
+    raise NotImplementedError
 
 _glifDefaultTransformation = dict(
     xScale=1,
@@ -559,15 +658,22 @@ xmlLineBreak = u"\n"
 # TO DO: define global attribute order
 xmlAttributeOrder = u"""
 name
+base
 format
 fileName
+base
+x
+y
 xScale
 xyScale
 yxScale
 yScale
 xOffset
 yOffset
+type
+smooth
 color
+identifier
 """.strip().splitlines()
 
 class XMLWriter(object):
