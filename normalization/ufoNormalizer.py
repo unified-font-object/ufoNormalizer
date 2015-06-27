@@ -1338,22 +1338,42 @@ def handleClash2(existing=[], prefix="", suffix=""):
 # -------
 
 if __name__ == "__main__":
+    # doctests
     import doctest
     doctest.testmod()
 
-    import time
+    # test file searching
     import glob
+
+    paths = []
     d = os.path.dirname(__file__)
     pattern = os.path.join(d, "test", "*.ufo")
-
     for inPath in glob.glob(pattern):
         if inPath.endswith("-n.ufo"):
             continue
         outPath = os.path.splitext(inPath)[0] + "-n.ufo"
         if os.path.exists(outPath):
             shutil.rmtree(outPath)
+        paths.append((inPath, outPath))
+
+    # profile test
+    import cProfile
+
+    inPath, outPath = paths[0]
+    shutil.copytree(inPath, outPath)
+
+    def runProfile():
+        normalizeUFO(outPath)
+
+    cProfile.run("runProfile()", sort="cumulative")
+    shutil.rmtree(outPath)
+
+    # general test
+    import time
+
+    for inPath, outPath in paths:
         shutil.copytree(inPath, outPath)
         s = time.time()
         normalizeUFO(outPath)
         t = time.time() - s
-        print os.path.basename(inPath) + ":", t
+        print os.path.basename(inPath) + ":", t, "seconds"
