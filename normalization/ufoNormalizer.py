@@ -6,18 +6,18 @@ import textwrap
 import datetime
 
 """
-- possibly add a -strict option that will remove unknown
-  directories/files/elements/attributes and fix glaring errors.
-  the places where these could happen are being marked with
-  "# INVALID DATA POSSIBILITY"
-- things that need to be improved are marked with "# TO DO"
-- should unknown attributes be removed in GLIF? they are right now.
-- should unknown elements be removed in GLIF? they are right now.
-- is the conversion of numbers coming from plist too naive?
 - the mod time functionality also needs to store the normalizer
   version in case the rules change from version to version.
 - run through the mod times before writing and make sure that
   all registered files exist in the UFO.
+- things that need to be improved are marked with "# TO DO"
+- is the conversion of numbers coming from plist too naive?
+- should unknown attributes be removed in GLIF? they are right now.
+- should unknown elements be removed in GLIF? they are right now.
+- if removal should be optional, possibly add a -strict option
+  that will remove unknown directories/files/elements/attributes
+  and fix glaring errors. the places where these could happen
+  are being marked with "# INVALID DATA POSSIBILITY"
 """
 
 modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
