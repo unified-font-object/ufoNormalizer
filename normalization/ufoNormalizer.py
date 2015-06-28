@@ -165,10 +165,15 @@ def normalizeUFO1And2GlyphsDirectory(ufoPath):
         normalizeGLIF(ufoPath, "glyphs", fileName)
 
 def normalizeGlyphsDirectory(ufoPath, layerDirectory):
-    # TO DO: normalize layerinfo.plist
+    normalizeLayerInfoPlist(ufoPath, layerDirectory)
     glyphMapping = normalizeGlyphNames(ufoPath, layerDirectory)
     for fileName in glyphMapping.values():
         normalizeGLIF(ufoPath, layerDirectory, fileName)
+
+def normalizeLayerInfoPlist(ufoPath, layerDirectory):
+    # TO DO: normalize colors
+    if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
+        _normalizePlistFile(ufoPath, layerDirectory, "layerinfo.plist")
 
 def normalizeGlyphNames(ufoPath, layerDirectory):
     """
