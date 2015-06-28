@@ -5,11 +5,7 @@ import plistlib
 import textwrap
 import datetime
 
-
 """
-- once this is working, make it faster by storing mod times
-  for each file in lib.plist + layerinfo.plist.
-- force any PLIST data elements to proper base64 formatting.
 - possibly add a -strict option that will remove unknown
   directories/files/elements/attributes and fix glaring errors.
   the places where these could happen are being marked with
@@ -18,13 +14,19 @@ import datetime
 - should unknown attributes be removed in GLIF? they are right now.
 - should unknown elements be removed in GLIF? they are right now.
 - is the conversion of numbers coming from plist too naive?
+- the mod time functionality also needs to store the normalizer
+  version in case the rules change from version to version.
+- run through the mod times before writing and make sure that
+  all registered files exist in the UFO.
 """
+
+modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
 
 
 class UFONormalizerError(Exception): pass
 
 
-def normalizeUFO(ufoPath, outputPath=None):
+def normalizeUFO(ufoPath, outputPath=None, onlyModified=True):
     # if the output is going to a different location,
     # duplicate the UFO to the new place and work
     # on the new file instead of trying to reconstruct
@@ -51,22 +53,31 @@ def normalizeUFO(ufoPath, outputPath=None):
         fontLib = {}
     else:
         fontLib = subpathReadPlist(ufoPath, "lib.plist")
+    # get the modification times
+    if onlyModified:
+        modTimes = fontLib.get(modTimeLibKey, {})
+    else:
+        modTimes = {}
     # normalize layers
     if formatVersion < 3:
         if subpathExists(ufoPath, "glyphs"):
-            normalizeUFO1And2GlyphsDirectory(ufoPath)
+            normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes)
     else:
         normalizeGlyphsDirectoryNames(ufoPath)
+        normalizeGlyphsDirectory(ufoPath)
     # normalize top level files
-    normalizeMetaInfoPlist(ufoPath)
+    normalizeMetaInfoPlist(ufoPath, modTimes)
     if subpathExists(ufoPath, "fontinfo.plist"):
-        normalizeFontInfoPlist(ufoPath)
+        normalizeFontInfoPlist(ufoPath, modTimes)
     if subpathExists(ufoPath, "groups.plist"):
-        normalizeGroupsPlist(ufoPath)
+        normalizeGroupsPlist(ufoPath, modTimes)
     if subpathExists(ufoPath, "kerning.plist"):
-        normalizeKerningPlist(ufoPath)
+        normalizeKerningPlist(ufoPath, modTimes)
     if subpathExists(ufoPath, "layercontents.plist"):
-        normalizeLayerContentsPlist(ufoPath)
+        normalizeLayerContentsPlist(ufoPath, modTimes)
+    # update the mod time storage, write, normalize
+    fontLib[modTimeLibKey] = modTimes
+    subpathWritePlist(fontLib, ufoPath, "lib.plist")
     if subpathExists(ufoPath, "lib.plist"):
         normalizeLibPlist(ufoPath)
 
@@ -159,16 +170,27 @@ def _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers):
 # Glyphs
 # ------
 
-def normalizeUFO1And2GlyphsDirectory(ufoPath):
+def normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes):
     glyphMapping = normalizeGlyphNames(ufoPath, "glyphs")
     for fileName in sorted(glyphMapping.values()):
-        normalizeGLIF(ufoPath, "glyphs", fileName)
+        location = subpathJoin("glyphs", fileName)
+        if subpathNeedsRefresh(modTimes, ufoPath, location):
+            normalizeGLIF(ufoPath, "glyphs", fileName)
+            modTimes[location] = subpathGetModTime(ufoPath, "glyphs", fileName)
 
 def normalizeGlyphsDirectory(ufoPath, layerDirectory):
-    normalizeLayerInfoPlist(ufoPath, layerDirectory)
+    if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
+        layerInfo = subpathReadPlist(ufoPath, layerDirectory, "layerinfo.plist")
+        layerLib = layerInfo.get("lib", {})
+    else:
+        layerLib = {}
+    modTimes = layerLib.get(modTimeLibKey, {})
     glyphMapping = normalizeGlyphNames(ufoPath, layerDirectory)
     for fileName in glyphMapping.values():
-        normalizeGLIF(ufoPath, layerDirectory, fileName)
+        if subpathNeedsRefresh(modTimes, ufoPath, layerDirectory, fileName):
+            normalizeGLIF(ufoPath, layerDirectory, fileName)
+            modTimes[location] = subpathGetModTime(ufoPath, layerDirectory, fileName)
+    normalizeLayerInfoPlist(ufoPath, layerDirectory)
 
 def normalizeLayerInfoPlist(ufoPath, layerDirectory):
     # TO DO: normalize colors
@@ -258,41 +280,43 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
 # normalization (such as filtering default values)
 # needs to occur.
 
-def _normalizePlistFile(ufoPath, *subpath):
-    data = subpathReadPlist(ufoPath, *subpath)
-    text = normalizePropertyList(data)
-    subpathWriteFile(text, ufoPath, *subpath)
+def _normalizePlistFile(modTimes, ufoPath, *subpath):
+    if subpathNeedsRefresh(modTimes, ufoPath, *subpath):
+        data = subpathReadPlist(ufoPath, *subpath)
+        text = normalizePropertyList(data)
+        subpathWriteFile(text, ufoPath, *subpath)
+        modTimes[subpath[-1]] = subpathGetModTime(ufoPath, *subpath)
 
 # metainfo.plist
 
-def normalizeMetaInfoPlist(ufoPath):
-    _normalizePlistFile(ufoPath, "metainfo.plist")
+def normalizeMetaInfoPlist(ufoPath, modTimes):
+    _normalizePlistFile(modTimes, ufoPath, "metainfo.plist")
 
 # fontinfo.plist
 
-def normalizeFontInfoPlist(ufoPath):
+def normalizeFontInfoPlist(ufoPath, modTimes):
     # TO DO: normalize color strings
-    _normalizePlistFile(ufoPath, "fontinfo.plist")
+    _normalizePlistFile(modTimes, ufoPath, "fontinfo.plist")
 
 # groups.plist
 
-def normalizeGroupsPlist(ufoPath):
-    _normalizePlistFile(ufoPath, "groups.plist")
+def normalizeGroupsPlist(ufoPath, modTimes):
+    _normalizePlistFile(modTimes, ufoPath, "groups.plist")
 
 # kerning.plist
 
-def normalizeKerningPlist(ufoPath):
-    _normalizePlistFile(ufoPath, "kerning.plist")
+def normalizeKerningPlist(ufoPath, modTimes):
+    _normalizePlistFile(modTimes, ufoPath, "kerning.plist")
 
 # layercontents.plist
 
-def normalizeLayerContentsPlist(ufoPath):
-    _normalizePlistFile(ufoPath, "layercontents.plist")
+def normalizeLayerContentsPlist(ufoPath, modTimes):
+    _normalizePlistFile(modTimes, ufoPath, "layercontents.plist")
 
 # lib.plist
 
 def normalizeLibPlist(ufoPath):
-    _normalizePlistFile(ufoPath, "lib.plist")
+    _normalizePlistFile({}, ufoPath, "lib.plist")
 
 # -----------------
 # XML Normalization
@@ -1132,6 +1156,25 @@ def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
     inPath = subpathJoin(ufoPath, *fromSubpath)
     outPath = subpathJoin(ufoPath, *toSubpath)
     shutil.move(inPath, outPath)
+
+# mod times
+
+def subpathGetModTime(ufoPath, *subpath):
+    """
+    Get the modification time for a file.
+    """
+    path = subpathJoin(ufoPath, *subpath)
+    return os.path.getmtime(path)
+
+def subpathNeedsRefresh(modTimes, ufoPath, *subPath):
+    """
+    Determine if a file needs to be refreshed.
+    """
+    previous = modTimes.get(subPath[-1])
+    if previous is None:
+        return True
+    latest = subpathGetModTime(ufoPath, *subpath)
+    return latest == previous
 
 # ----------------------
 # User Name to File Name
