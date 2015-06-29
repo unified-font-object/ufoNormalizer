@@ -6,6 +6,7 @@ import textwrap
 import datetime
 
 """
+- store the mod times as a string instead of a nested dict
 - the mod time functionality also needs to store the normalizer
   version in case the rules change from version to version.
 - run through the mod times before writing and make sure that
@@ -1041,10 +1042,22 @@ def xmlConvertValue(value):
 
 def xmlConvertFloat(value):
     """
-    TO DO: need doctests
+    >>> xmlConvertFloat(1.0)
+    '1'
+    >>> xmlConvertFloat(1.01)
+    '1.01'
+    >>> xmlConvertFloat(1.0000000001)
+    '1.0000000001'
+    >>> xmlConvertFloat(1.00000000001)
+    '1'
+    >>> xmlConvertFloat(1.00000000009)
+    '1.0000000001'
     """
-    # TO DO: needs to be handled according to the spec
-    return str(value)
+    value = "%.10f" % value
+    value = value.rstrip("0")
+    if value[-1] == ".":
+        return xmlConvertInt(int(float(value)))
+    return value
 
 def xmlConvertInt(value):
     """
@@ -1397,24 +1410,26 @@ if __name__ == "__main__":
             shutil.rmtree(outPath)
         paths.append((inPath, outPath))
 
-    # profile test
-    import cProfile
+    if paths:
 
-    inPath, outPath = paths[0]
-    shutil.copytree(inPath, outPath)
+        # profile test
+        import cProfile
 
-    def runProfile():
-        normalizeUFO(outPath)
-
-    cProfile.run("runProfile()", sort="tottime")
-    shutil.rmtree(outPath)
-
-    # general test
-    import time
-
-    for inPath, outPath in paths:
+        inPath, outPath = paths[0]
         shutil.copytree(inPath, outPath)
-        s = time.time()
-        normalizeUFO(outPath)
-        t = time.time() - s
-        print os.path.basename(inPath) + ":", t, "seconds"
+
+        def runProfile():
+            normalizeUFO(outPath)
+
+        cProfile.run("runProfile()", sort="tottime")
+        shutil.rmtree(outPath)
+
+        # general test
+        import time
+
+        for inPath, outPath in paths:
+            shutil.copytree(inPath, outPath)
+            s = time.time()
+            normalizeUFO(outPath)
+            t = time.time() - s
+            print os.path.basename(inPath) + ":", t, "seconds"
