@@ -6,9 +6,7 @@ import textwrap
 import datetime
 
 """
-- store the mod times as a string instead of a nested dict
-- the mod time functionality also needs to store the normalizer
-  version in case the rules change from version to version.
+- add command line functionality (may require a file rename)
 - run through the mod times before writing and make sure that
   all registered files exist in the UFO.
 - things that need to be improved are marked with "# TO DO"
@@ -21,6 +19,7 @@ import datetime
   are being marked with "# INVALID DATA POSSIBILITY"
 """
 
+__version__ = "0a1"
 modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
 
 
@@ -56,7 +55,7 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True):
         fontLib = subpathReadPlist(ufoPath, "lib.plist")
     # get the modification times
     if onlyModified:
-        modTimes = fontLib.get(modTimeLibKey, {})
+        modTimes = readModTimes(fontLib)
     else:
         modTimes = {}
     # normalize layers
@@ -65,7 +64,10 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True):
             normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes)
     else:
         normalizeGlyphsDirectoryNames(ufoPath)
-        normalizeGlyphsDirectory(ufoPath)
+        if subpathExists(ufoPath, "layercontents.plist"):
+            layerContents = subpathReadPlist(ufoPath, "layercontents.plist")
+            for layerDirectory in layerContents.values():
+                normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=onlyModified)
     # normalize top level files
     normalizeMetaInfoPlist(ufoPath, modTimes)
     if subpathExists(ufoPath, "fontinfo.plist"):
@@ -77,7 +79,7 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True):
     if subpathExists(ufoPath, "layercontents.plist"):
         normalizeLayerContentsPlist(ufoPath, modTimes)
     # update the mod time storage, write, normalize
-    fontLib[modTimeLibKey] = modTimes
+    storeModTimes(fontLib, modTimes)
     subpathWritePlist(fontLib, ufoPath, "lib.plist")
     if subpathExists(ufoPath, "lib.plist"):
         normalizeLibPlist(ufoPath)
@@ -179,18 +181,22 @@ def normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes):
             normalizeGLIF(ufoPath, "glyphs", fileName)
             modTimes[location] = subpathGetModTime(ufoPath, "glyphs", fileName)
 
-def normalizeGlyphsDirectory(ufoPath, layerDirectory):
+def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
     if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
         layerInfo = subpathReadPlist(ufoPath, layerDirectory, "layerinfo.plist")
         layerLib = layerInfo.get("lib", {})
     else:
         layerLib = {}
-    modTimes = layerLib.get(modTimeLibKey, {})
+    if onlyModified:
+        modTimes = readModTimes(layerLib)
+    else:
+        modTimes = {}
     glyphMapping = normalizeGlyphNames(ufoPath, layerDirectory)
     for fileName in glyphMapping.values():
         if subpathNeedsRefresh(modTimes, ufoPath, layerDirectory, fileName):
             normalizeGLIF(ufoPath, layerDirectory, fileName)
             modTimes[location] = subpathGetModTime(ufoPath, layerDirectory, fileName)
+    storeModTimes(layerLib, modTimes)
     normalizeLayerInfoPlist(ufoPath, layerDirectory)
 
 def normalizeLayerInfoPlist(ufoPath, layerDirectory):
@@ -1188,6 +1194,50 @@ def subpathNeedsRefresh(modTimes, ufoPath, *subPath):
         return True
     latest = subpathGetModTime(ufoPath, *subpath)
     return latest == previous
+
+# ---------------
+# Store Mod Times
+# ---------------
+
+def storeModTimes(lib, modTimes):
+    """
+    Write the file mod times to the lib.
+    """
+    lines = [
+        "version: %s" % __version__
+    ]
+    for fileName, modTime in sorted(modTimes.items()):
+        line = "%.1f %s" % (modTime, fileName)
+        lines.append(line)
+    text = "\n".join(lines)
+    lib[modTimeLibKey] = text
+
+def readModTimes(lib):
+    """
+    Read the file mod times from the lib.
+    """
+    # TO DO: a version mismatch causing a complete
+    # renomalization of existing files sucks. but,
+    # I haven't been able to come up with a better
+    # solution. maybe we could keep track of what
+    # would need new normalization from version to
+    # version and only trigger it as needed. most
+    # new versions aren't going to require a complete
+    # rerun of everything.
+    text = lib.get(modTimeLibKey)
+    if not text:
+        return {}
+    lines = text.splitlines()
+    version = lines.pop(0).split(":")[-1].strip()
+    if version != __version__:
+        return {}
+    modTimes = {}
+    for line in lines:
+        modTime, fileName = line.split(" ", 1)
+        modTime = float(modTime)
+        modTimes[fileName] = modTime
+    return text
+
 
 # ----------------------
 # User Name to File Name
