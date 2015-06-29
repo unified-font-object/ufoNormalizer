@@ -747,7 +747,6 @@ plistDocType = "<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" 
 xmlTextMaxLineLength = 70
 xmlIndent = u"\t"
 xmlLineBreak = u"\n"
-# TO DO: define global attribute order
 xmlAttributeOrder = u"""
 name
 base
