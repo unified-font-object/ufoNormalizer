@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import shutil
 from xml.etree import cElementTree as ET
@@ -1018,8 +1020,43 @@ class XMLWriter(object):
 
 
 def xmlEscapeText(text):
-    """
-    TO DO: need doctests
+    r"""
+    NOTE: In Python 2.x, the doctest module is not robust enough to deal with non-ASCII 
+          characters; to make the tests work, the doctest string needs to be raw, 
+          and the results need to be escaped hexadecimal values of each byte.
+          In Python 3.x all strings are Unicode-encoded by default, which allows for
+          the doctests results to use any Unicode character.
+    
+    >>> xmlEscapeText(u"&")
+    u'&amp;'
+    >>> xmlEscapeText(u"<")
+    u'&lt;'
+    >>> xmlEscapeText(u">")
+    u'&gt;'
+    >>> xmlEscapeText(u"a")
+    u'a'
+    >>> xmlEscapeText(u"ä")
+    u'\xc3\xa4'
+    >>> xmlEscapeText(u"ā")
+    u'\xc4\x81'
+    >>> xmlEscapeText(u"𐐀")
+    u'\xf0\x90\x90\x80'
+    >>> xmlEscapeText(u"©")
+    u'\xc2\xa9'
+    >>> xmlEscapeText(u"—")
+    u'\xe2\x80\x94'
+    >>> xmlEscapeText(u"1")
+    u'1'
+    >>> xmlEscapeText(u"1.0")
+    u'1.0'
+    >>> xmlEscapeText(u"'")
+    u"'"
+    >>> xmlEscapeText(u"/")
+    u'/'
+    >>> xmlEscapeText(u"\\")
+    u'\\'
+    >>> xmlEscapeText(u"\\r")
+    u'\\r'
     """
     text = text.replace(u"&", u"&amp;")
     text = text.replace(u"<", u"&lt;")
