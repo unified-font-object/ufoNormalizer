@@ -1064,8 +1064,19 @@ def xmlEscapeText(text):
     return text
 
 def xmlEscapeAttribute(text):
-    """
-    TO DO: need doctests
+    r"""
+    >>> xmlEscapeAttribute(u'"')
+    u'&quot;'
+    >>> xmlEscapeAttribute(u"'")
+    u"'"
+    >>> xmlEscapeAttribute(u"abc")
+    u'abc'
+    >>> xmlEscapeAttribute(u"123")
+    u'123'
+    >>> xmlEscapeAttribute(u"/")
+    u'/'
+    >>> xmlEscapeAttribute(u"\\")
+    u'\\'
     """
     text = xmlEscapeText(text)
     text = text.replace(u"\"", u"&quot;")
