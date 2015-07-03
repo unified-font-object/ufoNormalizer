@@ -1129,7 +1129,40 @@ def xmlConvertFloat(value):
 
 def xmlConvertInt(value):
     """
-    TO DO: need doctests
+    >>> xmlConvertInt(1)
+    '1'
+    >>> xmlConvertInt(-1)
+    '-1'
+    >>> xmlConvertInt(- 1)
+    '-1'
+    >>> xmlConvertInt(0)
+    '0'
+    >>> xmlConvertInt(-0)
+    '0'
+    >>> xmlConvertInt(01)
+    '1'
+    >>> xmlConvertInt(- 01)
+    '-1'
+    >>> xmlConvertInt(000001)
+    '1'
+    >>> xmlConvertInt(0000000000000001)
+    '1'
+    >>> xmlConvertInt(1000000000000001)
+    '1000000000000001'
+    >>> xmlConvertInt(000001000001)
+    '262145'
+    >>> xmlConvertInt(00000100000)
+    '32768'
+    >>> xmlConvertInt(0000010)
+    '8'
+    >>> xmlConvertInt(-0000010)
+    '-8'
+    >>> xmlConvertInt(0000020)
+    '16'
+    >>> xmlConvertInt(0000030)
+    '24'
+    >>> xmlConvertInt(65536)
+    '65536'
     """
     return str(value)
 
