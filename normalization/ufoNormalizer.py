@@ -1084,7 +1084,22 @@ def xmlEscapeAttribute(text):
 
 def xmlConvertValue(value):
     """
-    TO DO: need doctests
+    >>> xmlConvertValue(0.0)
+    '0'
+    >>> xmlConvertValue(-0.0)
+    '0'
+    >>> xmlConvertValue(2.0)
+    '2'
+    >>> xmlConvertValue(-2.0)
+    '-2'
+    >>> xmlConvertValue(2.05)
+    '2.05'
+    >>> xmlConvertValue(2)
+    '2'
+    >>> xmlConvertValue(0.2)
+    '0.2'
+    >>> xmlConvertValue("0.0")
+    u'0.0'
     """
     if isinstance(value, float):
         return xmlConvertFloat(value)
