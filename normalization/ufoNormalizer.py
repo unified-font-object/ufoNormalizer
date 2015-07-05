@@ -878,12 +878,22 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>'
 
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject({"a" : 20.0})
+        >>> writer.getText()
+        u'<dict>\\n\\t<key>a</key>\\n\\t<real>20</real>\\n</dict>'
+
         String:
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject("a")
         >>> writer.getText()
         u'<string>a</string>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject("1.000")
+        >>> writer.getText()
+        u'<string>1.000</string>'
 
         Boolean:
 
@@ -909,6 +919,26 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<real>-1.1</real>'
 
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(1.0)
+        >>> writer.getText()
+        u'<real>1</real>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(-1.0)
+        >>> writer.getText()
+        u'<real>-1</real>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(0.0)
+        >>> writer.getText()
+        u'<real>0</real>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(-0.0)
+        >>> writer.getText()
+        u'<real>0</real>'
+
         Integer:
 
         >>> writer = XMLWriter(declaration=None)
@@ -922,9 +952,24 @@ class XMLWriter(object):
         u'<integer>-1</integer>'
 
         >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(+1)
+        >>> writer.getText()
+        u'<integer>1</integer>'
+
+        >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(0)
         >>> writer.getText()
         u'<integer>0</integer>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(-0)
+        >>> writer.getText()
+        u'<integer>0</integer>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(2015-01-01)
+        >>> writer.getText()
+        u'<integer>2013</integer>'
 
         Date:
         # TO DO: need doctests
