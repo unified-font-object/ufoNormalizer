@@ -727,9 +727,7 @@ def _convertPlistElementToObject(element):
         # needs to convert to plistlib.Data
         raise NotImplementedError
     elif tag == "date":
-        # TO DO: implement this
-        # needs to convert to datetime.datetime
-        raise NotImplementedError
+        return plistlib._dateFromString(element.text)
     elif tag == "true":
         return True
     elif tag == "false":
@@ -971,7 +969,18 @@ class XMLWriter(object):
         u'<integer>2013</integer>'
 
         Date:
-        # TO DO: need doctests
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> date = datetime.datetime(2012, 9, 1)
+        >>> writer.propertyListObject(date)
+        >>> writer.getText()
+        u'<date>2012-09-01T00:00:00Z</date>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> date = datetime.datetime(2009, 11, 29, 16, 31, 53)
+        >>> writer.propertyListObject(date)
+        >>> writer.getText()
+        u'<date>2009-11-29T16:31:53Z</date>'
 
         Data:
 
@@ -1033,8 +1042,8 @@ class XMLWriter(object):
         self.simpleElement("integer", value=data)
 
     def _plistDate(self, data):
-        # TO DO: implement this. refer to plistlib.py.
-        raise NotImplementedError
+        data = plistlib._dateToString(data)
+        self.simpleElement("date", value=data)
 
     def _plistData(self, data):
         self.beginElement("data")
