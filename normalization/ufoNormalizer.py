@@ -1349,7 +1349,7 @@ class XMLWriter(object):
             if not paragraph:
                 paragraphs.append("")
             else:
-                paragraph = textwrap.wrap(text,
+                paragraph = textwrap.wrap(paragraph,
                     width=xmlTextMaxLineLength,
                     expand_tabs=False,
                     replace_whitespace=False,
