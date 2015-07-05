@@ -418,17 +418,146 @@ def normalizeGLIF(ufoPath, *subpath):
 
 def _normalizeGlifUnicode(element, writer):
     """
-    TO DO: need doctests
+    >>> element = ET.fromstring('<unicode />')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<unicode hex=""/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<unicode hexagon=""/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<unicode hex="0041"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u'<unicode hex="0041"/>'
+
+    >>> element = ET.fromstring('<unicode hex="41"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u'<unicode hex="0041"/>'
+
+    >>> element = ET.fromstring('<unicode hex="ea"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u'<unicode hex="00EA"/>'
+
+    >>> element = ET.fromstring('<unicode hex="2Af"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u'<unicode hex="02AF"/>'
+
+    >>> element = ET.fromstring('<unicode hex="xyz"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<unicode hex="0000fFfF"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u'<unicode hex="FFFF"/>'
+
+    >>> element = ET.fromstring('<unicode hex="10000"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u'<unicode hex="10000"/>'
+
+    >>> element = ET.fromstring('<unicode hex="abcde"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u'<unicode hex="ABCDE"/>'
     """
-    # TO DO: properly format hex value
+    v = element.attrib.get("hex")
     # INVALID DATA POSSIBILITY: no hex value
+    if v:
     # INVALID DATA POSSIBILITY: invalid hex value
-    v = element.attrib["hex"]
+        try:
+            d = int(v, 16)
+            v = "%04X" % d
+        except ValueError:
+            return
+    else:
+        return
     writer.simpleElement("unicode", attrs=dict(hex=v))
 
 def _normalizeGlifAdvance(element, writer):
     """
-    TO DO: need doctests
+    >>> element = ET.fromstring('<advance />')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<advance width="0"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<advance height="0"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<advance width="0" height="0"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<advance bogus="450"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<advance width="325.0" bogus="450"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u'<advance width="325"/>'
+
+    >>> element = ET.fromstring('<advance width="0" height="350.0"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u'<advance height="350"/>'
+
+    >>> element = ET.fromstring('<advance width="200.98765432198765" height="0.0500" />')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u'<advance height="0.05" width="200.987654322"/>'
+
+    >>> element = ET.fromstring('<advance width="2.000" height="-500"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u'<advance height="-500" width="2"/>'
+
+    >>> element = ET.fromstring('<advance width="-0.0" height="-10.001"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u'<advance height="-10.001"/>'
     """
     # INVALID DATA POSSIBILITY: value that can't be converted to float
     w = element.attrib.get("width", "0")
@@ -447,7 +576,19 @@ def _normalizeGlifAdvance(element, writer):
 
 def _normalizeGlifImage(element, writer):
     """
-    TO DO: need doctests
+    TO DO: expand doctests
+
+    >>> element = ET.fromstring('<image fileName="" xOffset="" yOffset="" color="" xScale="" xyScale="" yxScale="" yScale=""/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifImage(element, writer)
+    >>> writer.getText()
+    u'<image fileName="" xScale="" xyScale="" yxScale="" yScale="" xOffset="" yOffset="" color=""/>'
+
+    >>> element = ET.fromstring('<image fileName="Sketch 1.png" xOffset="100" yOffset="200" xScale=".75" yScale=".75" color="1,0,0,.5" />')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifImage(element, writer)
+    >>> writer.getText()
+    u'<image fileName="Sketch 1.png" xScale=".75" yScale=".75" xOffset="100" yOffset="200" color="1,0,0,.5"/>'
     """
     # INVALID DATA POSSIBILITY: no file name defined
     attrs = dict(
@@ -462,7 +603,19 @@ def _normalizeGlifImage(element, writer):
 
 def _normalizeGlifAnchor(element, writer):
     """
-    TO DO: need doctests
+    TO DO: expand doctests
+
+    >>> element = ET.fromstring('<anchor x="0" y="0" name="" color="" identifier=""/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u'<anchor name="" x="0" y="0" color="" identifier=""/>'
+
+    >>> element = ET.fromstring('<anchor y="04.50" x="230" name="_above" color="1,0,0,.5" identifier="7B86ACED-F5D7-409E-A67B-AC3DA57B5DAC"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u'<anchor name="_above" x="230" y="4.5" color="1,0,0,.5" identifier="7B86ACED-F5D7-409E-A67B-AC3DA57B5DAC"/>'
     """
     # INVALID DATA POSSIBILITY: no x defined
     # INVALID DATA POSSIBILITY: no y defined
@@ -484,7 +637,19 @@ def _normalizeGlifAnchor(element, writer):
 
 def _normalizeGlifGuideline(element, writer):
     """
-    TO DO: need doctests
+    TO DO: expand doctests
+
+    >>> element = ET.fromstring('<guideline x="0" y="0" angle="0" name="" color="" identifier=""/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u'<guideline name="" x="0" y="0" color="" identifier="" angle="0"/>'
+
+    >>> element = ET.fromstring('<guideline x="670.325" y="-41" angle="360" name="accent height" color=".2,.3,.4,.5" identifier="#horizontal"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u'<guideline name="accent height" x="670.325" y="-41" color=".2,.3,.4,.5" identifier="#horizontal" angle="360"/>'
     """
     # INVALID DATA POSSIBILITY: no x defined
     # INVALID DATA POSSIBILITY: no y defined
@@ -516,17 +681,145 @@ def _normalizeGlifLib(element, writer):
         writer.endElement("lib")
 
 def _normalizeGlifNote(element, writer):
-    """
-    TO DO: need doctests
+    r"""
+    >>> element = ET.fromstring('<note></note>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<note/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<note>Blah</note>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText()
+    u'<note>\n\tBlah\n</note>'
+
+    >>> element = ET.fromstring("<note>Don't forget to check the béziers!!</note>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText()
+    u"<note>\n\tDon't forget to check the b\xe9ziers!!\n</note>"
+
+    >>> element = ET.fromstring("<note>A quick brown fox jumps over the lazy dog.\\nPříliš žluťoučký kůň úpěl ďábelské ódy.</note>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText()
+    u'<note>\n\tA quick brown fox jumps over the lazy dog.\\nP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \n\t\u010f\xe1belsk\xe9 \xf3dy.\n</note>'
     """
     value = element.text
+    if not value:
+        return
     writer.beginElement("note")
     writer.text(value)
     writer.endElement("note")
 
 def _normalizeGlifOutlineFormat1(element, writer):
-    """
-    TO DO: need doctests
+    r"""
+    >>> outline = '''
+    ... <outline>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat1(element, writer)
+    >>> writer.getText()
+    u'<outline>\n</outline>'
+
+    >>> outline = '''
+    ... <outline>
+    ...     <contour>
+    ...     </contour>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat1(element, writer)
+    >>> writer.getText()
+    u'<outline>\n\t<contour>\n\t</contour>\n</outline>'
+
+    >>> outline = '''
+    ... <outline>
+    ...     <component base=""/>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat1(element, writer)
+    >>> writer.getText()
+    u'<outline>\n\t<component base=""/>\n</outline>'
+
+    >>> outline = '''
+    ... <outline>
+    ...     <contour>
+    ...         <point type="line" y="0" x="0"/>
+    ...     </contour>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat1(element, writer)
+    >>> writer.getText()
+    u'<outline>\n\t<contour>\n\t\t<point x="0" y="0" type="line"/>\n\t</contour>\n</outline>'
+
+    >>> outline = '''
+    ... <outline>
+    ...     <component base="C"/>
+    ...     <contour>
+    ...         <point type="line" y="0" x="0"/>
+    ...     </contour>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat1(element, writer)
+    >>> writer.getText()
+    u'<outline>\n\t<component base="C"/>\n\t<contour>\n\t\t<point x="0" y="0" type="line"/>\n\t</contour>\n</outline>'
+
+    >>> outline = '''
+    ... <outline>
+    ...     <contour>
+    ...         <point y="250" x="150"/>
+    ...         <point x="193" y="187"/>
+    ...     </contour>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat1(element, writer)
+    >>> writer.getText()
+    u'<outline>\n\t<contour>\n\t\t<point x="150" y="250"/>\n\t\t<point x="193" y="187"/>\n\t</contour>\n</outline>'
+
+#     >>> outline = '''
+#     ... <outline>
+#     ...     <contour>
+#     ...         <point y="250" x="150"/>
+#     ...     </contour>
+#     ... </outline>
+#     ... '''
+#     >>> element = ET.fromstring(outline)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifOutlineFormat1(element, writer)
+#     >>> writer.getText()
+#     u'<outline>\n\t<contour>\n\t\t<point x="150" y="250"/>\n\t</contour>\n</outline>'
+
+#     >>> outline = '''
+#     ... <outline>
+#     ...     <contour>
+#     ...         <point type="move" y="20" x="20"/>
+#     ...     </contour>
+#     ... </outline>
+#     ... '''
+#     >>> element = ET.fromstring(outline)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifOutlineFormat1(element, writer)
+#     >>> writer.getText()
+#     u'<outline>\n\t<contour>\n\t\t<point x="20" y="20" type="move"/>\n\t</contour>\n</outline>'
     """
     writer.beginElement("outline")
     anchors = []
@@ -548,8 +841,72 @@ def _normalizeGlifOutlineFormat1(element, writer):
     writer.endElement("outline")
 
 def _normalizeGlifContourFormat1(element, writer):
-    """
-    TO DO: need doctests
+    r"""
+    >>> contour = '''
+    ... <contour>
+    ... </contour>
+    ... '''
+    >>> element = ET.fromstring(contour)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifContourFormat1(element, writer)
+    >>> writer.getText()
+    u'<contour>\n</contour>'
+
+    >>> contour = '''
+    ... <contour>
+    ...     <point type="line" y="0" x="0"/>
+    ... </contour>
+    ... '''
+    >>> element = ET.fromstring(contour)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifContourFormat1(element, writer)
+    >>> writer.getText()
+    u'<contour>\n\t<point x="0" y="0" type="line"/>\n</contour>'
+
+    >>> contour = '''
+    ... <contour>
+    ...     <point y="250" x="150"/>
+    ...     <point x="193" y="187"/>
+    ... </contour>
+    ... '''
+    >>> element = ET.fromstring(contour)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifContourFormat1(element, writer)
+    >>> writer.getText()
+    u'<contour>\n\t<point x="150" y="250"/>\n\t<point x="193" y="187"/>\n</contour>'
+
+    >>> contour = '''
+    ... <contour>
+    ...     <point x="250" smooth="yes" y="650" type="curve" name="top"/>
+    ... </contour>
+    ... '''
+    >>> element = ET.fromstring(contour)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifContourFormat1(element, writer)
+    >>> writer.getText()
+    u'<contour>\n\t<point name="top" x="250" y="650" type="curve" smooth="yes"/>\n</contour>'
+
+#     >>> contour = '''
+#     ... <contour>
+#     ...     <point x="250" y="650"/>
+#     ... </contour>
+#     ... '''
+#     >>> element = ET.fromstring(contour)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifContourFormat1(element, writer)
+#     >>> writer.getText()
+#     u''
+
+#     >>> contour = '''
+#     ... <contour>
+#     ...     <point x="250" y="650" type="move"/>
+#     ... </contour>
+#     ... '''
+#     >>> element = ET.fromstring(contour)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifContourFormat1(element, writer)
+#     >>> writer.getText()
+#     u''
     """
     # INVALID DATA POSSIBILITY: unknown child element
     # INVALID DATA POSSIBILITY: unknown point type
@@ -571,11 +928,30 @@ def _normalizeGlifContourFormat1(element, writer):
 
 def _normalizeGlifPointAttributesFormat1(element):
     """
-    TO DO: need doctests
+    >>> point = '''<point x="210" y="476"/>'''
+    >>> element = ET.fromstring(point)
+    >>> _normalizeGlifPointAttributesFormat1(element)
+    {'y': 476.0, 'x': 210.0}
+
+    >>> point = '''<point x="134" y="187" type="curve" smooth="yes" name="corner"/>'''
+    >>> element = ET.fromstring(point)
+    >>> _normalizeGlifPointAttributesFormat1(element)
+    {'y': 187.0, 'x': 134.0, 'type': 'curve', 'smooth': 'yes', 'name': 'corner'}
+
+    >>> point = '''<point x="134.45" y="187.78" type="offcurve" smooth="no" name="corner"/>'''
+    >>> element = ET.fromstring(point)
+    >>> _normalizeGlifPointAttributesFormat1(element)
+    {'y': 187.78, 'x': 134.45, 'name': 'corner'}
+
+    >>> point = '''<point x="310" y="475" type="move"/>'''
+    >>> element = ET.fromstring(point)
+    >>> _normalizeGlifPointAttributesFormat1(element)
+    {'y': 475.0, 'x': 310.0, 'type': 'move'}
     """
     # INVALID DATA POSSIBILITY: no x defined
     # INVALID DATA POSSIBILITY: no y defined
     # INVALID DATA POSSIBILITY: x or y that can't be converted to float
+    # INVALID DATA POSSIBILITY: duplicate attributes
     attrs = dict(
         x=float(element.attrib["x"]),
         y=float(element.attrib["y"])
@@ -583,7 +959,6 @@ def _normalizeGlifPointAttributesFormat1(element):
     typ = element.attrib.get("type", "offcurve")
     if typ != "offcurve":
         attrs["type"] = typ
-    if typ != "offcurve":
         smooth = element.attrib.get("smooth", "no")
         if smooth == "yes":
             attrs["smooth"] = "yes"
@@ -594,7 +969,19 @@ def _normalizeGlifPointAttributesFormat1(element):
 
 def _normalizeGlifComponentFormat1(element, writer):
     """
-    TO DO: need doctests
+    >>> component = '''<component base="A"/>'''
+    >>> element = ET.fromstring(component)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifComponentFormat1(element, writer)
+    >>> writer.getText()
+    u'<component base="A"/>'
+
+    >>> component = '''<component xOffset="260" base="acutecmb.cap"/>'''
+    >>> element = ET.fromstring(component)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifComponentFormat1(element, writer)
+    >>> writer.getText()
+    u'<component base="acutecmb.cap" xOffset="260"/>'
     """
     # INVALID DATA POSSIBILITY: no base defined
     # INVALID DATA POSSIBILITY: unknown child element
@@ -603,9 +990,18 @@ def _normalizeGlifComponentFormat1(element, writer):
 
 def _normalizeGlifComponentAttributesFormat1(element):
     """
-    TO DO: need doctests
+    >>> component = '''<component base="A"/>'''
+    >>> element = ET.fromstring(component)
+    >>> _normalizeGlifComponentAttributesFormat1(element)
+    {'base': 'A'}
+
+    >>> component = '''<component xOffset="105" xScale=".75" yScale=".85" yOffset="200" base="B" xyScale="2" yxScale="0"/>'''
+    >>> element = ET.fromstring(component)
+    >>> _normalizeGlifComponentAttributesFormat1(element)
+    {'xScale': '.75', 'base': 'B', 'xOffset': '105', 'yScale': '.85', 'yxScale': '0', 'xyScale': '2', 'yOffset': '200'}
     """
     # INVALID DATA POSSIBILITY: no base defined
+    # INVALID DATA POSSIBILITY: duplicate attributes
     attrs = dict(
         base=element.attrib["base"]
     )
@@ -614,8 +1010,39 @@ def _normalizeGlifComponentAttributesFormat1(element):
     return attrs
 
 def _normalizeGlifOutlineFormat2(element, writer):
-    """
-    TO DO: need doctests
+    r"""
+    >>> outline = '''
+    ... <outline>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat2(element, writer)
+    >>> writer.getText()
+    u'<outline>\n</outline>'
+
+    >>> outline = '''
+    ... <outline>
+    ...     <contour>
+    ...     </contour>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat2(element, writer)
+    >>> writer.getText()
+    u'<outline>\n\t<contour>\n\t</contour>\n</outline>'
+
+    >>> outline = '''
+    ... <outline>
+    ...     <component base=""/>
+    ... </outline>
+    ... '''
+    >>> element = ET.fromstring(outline)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifOutlineFormat2(element, writer)
+    >>> writer.getText()
+    u'<outline>\n\t<component base=""/>\n</outline>'
     """
     writer.beginElement("outline")
     for subElement in element:
@@ -627,8 +1054,72 @@ def _normalizeGlifOutlineFormat2(element, writer):
     writer.endElement("outline")
 
 def _normalizeGlifContourFormat2(element, writer):
-    """
-    TO DO: need doctests
+    r"""
+    >>> contour = '''
+    ... <contour>
+    ... </contour>
+    ... '''
+    >>> element = ET.fromstring(contour)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifContourFormat2(element, writer)
+    >>> writer.getText()
+    u'<contour>\n</contour>'
+
+#     >>> contour = '''
+#     ... <contour>
+#     ...     <point type="line" y="0" x="0" identifier="CDC4111B-A72D-49CD-84FC-5883AE2DFA73"/>
+#     ... </contour>
+#     ... '''
+#     >>> element = ET.fromstring(contour)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifContourFormat2(element, writer)
+#     >>> writer.getText()
+#     u'<contour>\n\t<point x="0" y="0" type="line" identifier="CDC4111B-A72D-49CD-84FC-5883AE2DFA73"/>\n</contour>'
+
+#     >>> contour = '''
+#     ... <contour>
+#     ...     <point y="250" x="150" identifier="CDC4111B-A72D-49CD-84FC-5883AE2DFA73"/>
+#     ...     <point x="193" y="187"/>
+#     ... </contour>
+#     ... '''
+#     >>> element = ET.fromstring(contour)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifContourFormat2(element, writer)
+#     >>> writer.getText()
+#     u'<contour>\n\t<point x="150" y="250" identifier="CDC4111B-A72D-49CD-84FC-5883AE2DFA73"/>\n\t<point x="193" y="187"/>\n</contour>'
+
+#     >>> contour = '''
+#     ... <contour>
+#     ...     <point x="250" smooth="yes" y="650" identifier="CDC4111B-A72D-49CD-84FC-5883AE2DFA73" type="curve" name="top"/>
+#     ... </contour>
+#     ... '''
+#     >>> element = ET.fromstring(contour)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifContourFormat2(element, writer)
+#     >>> writer.getText()
+#     u'<contour>\n\t<point name="top" x="250" y="650" type="curve" smooth="yes" identifier="CDC4111B-A72D-49CD-84FC-5883AE2DFA73"/>\n</contour>'
+
+#     >>> contour = '''
+#     ... <contour>
+#     ...     <point x="250" identifier="CDC4111B-A72D-49CD-84FC-5883AE2DFA73" y="650"/>
+#     ... </contour>
+#     ... '''
+#     >>> element = ET.fromstring(contour)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifContourFormat2(element, writer)
+#     >>> writer.getText()
+#     u''
+
+#     >>> contour = '''
+#     ... <contour>
+#     ...     <point x="250" y="650" type="move" identifier="CDC4111B-A72D-49CD-84FC-5883AE2DFA73"/>
+#     ... </contour>
+#     ... '''
+#     >>> element = ET.fromstring(contour)
+#     >>> writer = XMLWriter(declaration=None)
+#     >>> _normalizeGlifContourFormat2(element, writer)
+#     >>> writer.getText()
+#     u''
     """
     # INVALID DATA POSSIBILITY: unknown child element
     # INVALID DATA POSSIBILITY: unknown point type
@@ -648,7 +1139,25 @@ def _normalizeGlifContourFormat2(element, writer):
 
 def _normalizeGlifPointAttributesFormat2(element):
     """
-    TO DO: need doctests
+    >>> point = '''<point identifier="F3E3C752-B7B3-423D-9519-119C3A2D09A0" x="210" y="476"/>'''
+    >>> element = ET.fromstring(point)
+    >>> _normalizeGlifPointAttributesFormat2(element)
+    {'y': 476.0, 'x': 210.0, 'identifier': 'F3E3C752-B7B3-423D-9519-119C3A2D09A0'}
+
+    >>> point = '''<point x="134" y="187" type="curve" identifier="F3E3C752-B7B3-423D-9519-119C3A2D09A0" smooth="yes" name="corner"/>'''
+    >>> element = ET.fromstring(point)
+    >>> _normalizeGlifPointAttributesFormat2(element)
+    {'name': 'corner', 'smooth': 'yes', 'y': 187.0, 'x': 134.0, 'identifier': 'F3E3C752-B7B3-423D-9519-119C3A2D09A0', 'type': 'curve'}
+
+    >>> point = '''<point x="134.45" y="187.78" type="offcurve" smooth="no" name="corner" identifier="F3E3C752-B7B3-423D-9519-119C3A2D09A0"/>'''
+    >>> element = ET.fromstring(point)
+    >>> _normalizeGlifPointAttributesFormat2(element)
+    {'y': 187.78, 'x': 134.45, 'identifier': 'F3E3C752-B7B3-423D-9519-119C3A2D09A0', 'name': 'corner'}
+
+    >>> point = '''<point x="310" y="475" identifier="F3E3C752-B7B3-423D-9519-119C3A2D09A0" type="move"/>'''
+    >>> element = ET.fromstring(point)
+    >>> _normalizeGlifPointAttributesFormat2(element)
+    {'y': 475.0, 'x': 310.0, 'identifier': 'F3E3C752-B7B3-423D-9519-119C3A2D09A0', 'type': 'move'}
     """
     attrs = _normalizeGlifPointAttributesFormat1(element)
     identifier = element.attrib.get("identifier")
@@ -658,14 +1167,34 @@ def _normalizeGlifPointAttributesFormat2(element):
 
 def _normalizeGlifComponentFormat2(element, writer):
     """
-    TO DO: need doctests
+    >>> component = '''<component base="A"/>'''
+    >>> element = ET.fromstring(component)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifComponentFormat2(element, writer)
+    >>> writer.getText()
+    u'<component base="A"/>'
+
+    >>> component = '''<component xOffset="260" base="acutecmb.cap"/>'''
+    >>> element = ET.fromstring(component)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifComponentFormat2(element, writer)
+    >>> writer.getText()
+    u'<component base="acutecmb.cap" xOffset="260"/>'
     """
     attrs = _normalizeGlifComponentAttributesFormat2(element)
     writer.simpleElement("component", attrs=attrs)
 
 def _normalizeGlifComponentAttributesFormat2(element):
     """
-    TO DO: need doctests
+    >>> component = '''<component identifier="F8B150BD-3B11-47A9-BBD2-B2C4A721D734" base="A"/>'''
+    >>> element = ET.fromstring(component)
+    >>> _normalizeGlifComponentAttributesFormat2(element)
+    {'base': 'A', 'identifier': 'F8B150BD-3B11-47A9-BBD2-B2C4A721D734'}
+
+    >>> component = '''<component identifier="F8B150BD-3B11-47A9-BBD2-B2C4A721D734" xOffset="105" xScale=".75" yScale=".85" yOffset="200" base="B" xyScale="2" yxScale="0"/>'''
+    >>> element = ET.fromstring(component)
+    >>> _normalizeGlifComponentAttributesFormat2(element)
+    {'xScale': '.75', 'base': 'B', 'xOffset': '105', 'yScale': '.85', 'yxScale': '0', 'identifier': 'F8B150BD-3B11-47A9-BBD2-B2C4A721D734', 'xyScale': '2', 'yOffset': '200'}
     """
     attrs = _normalizeGlifComponentAttributesFormat1(element)
     identifier = element.attrib.get("identifier")
@@ -684,7 +1213,17 @@ _glifDefaultTransformation = dict(
 
 def _normalizeGlifTransformation(element):
     """
-    TO DO: need doctests
+    >>> element = ET.fromstring('<component base="B" xScale="1" xyScale="0" yxScale="0" yScale="1" xOffset="0" yOffset="0"/>')
+    >>> _normalizeGlifTransformation(element)
+    {'yScale': '1', 'yxScale': '0', 'yOffset': '0', 'xyScale': '0', 'xScale': '1', 'xOffset': '0'}
+
+    >>> element = ET.fromstring('<component identifier="F8B150BD-3B11-47A9-BBD2-B2C4A721D734" xOffset="105" xScale=".75" yScale=".85" yOffset="200" base="B" xyScale="2" yxScale="0"/>')
+    >>> _normalizeGlifTransformation(element)
+    {'yScale': '.85', 'yxScale': '0', 'yOffset': '200', 'xyScale': '2', 'xScale': '.75', 'xOffset': '105'}
+
+    >>> element = ET.fromstring('<image fileName="Sketch 1.png" xOffset="100" yOffset="200" xScale=".75" yScale=".75" color="1,0,0,.5" />')
+    >>> _normalizeGlifTransformation(element)
+    {'xScale': '.75', 'yOffset': '200', 'xOffset': '100', 'yScale': '.75'}
     """
     attrs = {}
     for attr, default in _glifDefaultTransformation.items():
