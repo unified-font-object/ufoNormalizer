@@ -752,7 +752,6 @@ name
 base
 format
 fileName
-base
 x
 y
 xScale
@@ -1048,7 +1047,25 @@ class XMLWriter(object):
 
     def attributesToString(self, attrs):
         """
-        TO DO: need doctests
+        >>> attrs = {'y': 187.0, 'x': 134.0, 'type': 'curve', 'smooth': 'yes', 'name': 'corner'}
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.attributesToString(attrs)
+        u'name="corner" x="134" y="187" type="curve" smooth="yes"'
+
+        >>> attrs = {'xScale': '.75', 'base': 'B', 'xOffset': '200.9876543212345', 'yScale': .85, 'yxScale': 00.000, 'xyScale': '105.000', 'yOffset': 200.9876543212345, 'x': 200.000}
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.attributesToString(attrs)
+        u'base="B" x="200" xScale=".75" xyScale="105.000" yxScale="0" yScale="0.85" xOffset="200.9876543212345" yOffset="200.9876543212"'
+
+        >>> attrs = {'base': '', 'color': '', 'fileName': '', 'format': '', 'identifier': '', 'name': '', 'smooth': '', 'type': '', 'x': '', 'xOffset': '', 'xScale': '', 'xyScale': '', 'y': '', 'yOffset': '', 'yScale': '', 'yxScale': ''}
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.attributesToString(attrs)
+        u'name="" base="" format="" fileName="" x="" y="" xScale="" xyScale="" yxScale="" yScale="" xOffset="" yOffset="" type="" smooth="" color="" identifier=""'
+
+        >>> attrs = {'snap': '', 'base': '', 'color': '', 'fileName': '', 'format': '', 'crackle': '', 'identifier': '', 'name': '', 'smooth': '', 'type': '', 'x': '', 'xOffset': '', 'xScale': '', 'xyScale': '', 'y': '', 'yOffset': '', 'yScale': '', 'yxScale': '', 'pop': ''}
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.attributesToString(attrs)
+        u'name="" base="" format="" fileName="" x="" y="" xScale="" xyScale="" yxScale="" yScale="" xOffset="" yOffset="" type="" smooth="" color="" identifier="" crackle="" pop="" snap=""'
         """
         sorter = [
             (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in attrs.items()
