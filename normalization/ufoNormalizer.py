@@ -708,11 +708,11 @@ def _normalizeGlifNote(element, writer):
     >>> writer.getText()
     u"<note>\n\tDon't forget to check the b\xe9ziers!!\n</note>"
 
-    >>> element = ET.fromstring("<note>A quick brown fox jumps over the lazy dog.\\nPříliš žluťoučký kůň úpěl ďábelské ódy.</note>")
+    >>> element = ET.fromstring("<note>A quick brown fox jumps over the lazy dog.\nPříliš žluťoučký kůň úpěl ďábelské ódy.</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
     >>> writer.getText()
-    u'<note>\n\tA quick brown fox jumps over the lazy dog.\\nP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \n\t\u010f\xe1belsk\xe9 \xf3dy.\n</note>'
+    u'<note>\n\tA quick brown fox jumps over the lazy dog.\n\tP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>'
     """
     value = element.text
     if not value:
