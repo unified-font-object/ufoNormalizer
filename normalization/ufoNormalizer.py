@@ -501,65 +501,85 @@ def _normalizeGlifUnicode(element, writer):
 
 def _normalizeGlifAdvance(element, writer):
     """
-    >>> element = ET.fromstring('<advance />')
+    undefined
+    ---------
+    >>> element = ET.fromstring("<advance />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<advance width="0"/>')
+    defaults
+    --------
+    >>> element = ET.fromstring("<advance width='0'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<advance height="0"/>')
+    >>> element = ET.fromstring("<advance height='0'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<advance width="0" height="0"/>')
+    >>> element = ET.fromstring("<advance width='0' height='0'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<advance bogus="450"/>')
+    >>> element = ET.fromstring("<advance width='1' height='0'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
-    u''
+    u'<advance width="1"/>'
 
-    >>> element = ET.fromstring('<advance width="325.0" bogus="450"/>')
+    >>> element = ET.fromstring('<advance width="0" height="1"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u'<advance height="1"/>'
+
+    width
+    -----
+    >>> element = ET.fromstring('<advance width="325.0"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
     u'<advance width="325"/>'
 
-    >>> element = ET.fromstring('<advance width="0" height="350.0"/>')
+    >>> element = ET.fromstring('<advance width="325.1"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
-    u'<advance height="350"/>'
+    u'<advance width="325.1"/>'
 
-    >>> element = ET.fromstring('<advance width="200.98765432198765" height="0.0500" />')
+    >>> element = ET.fromstring('<advance width="-325.0"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
-    u'<advance height="0.05" width="200.987654322"/>'
+    u'<advance width="-325"/>'
 
-    >>> element = ET.fromstring('<advance width="2.000" height="-500"/>')
+    height
+    ------
+    >>> element = ET.fromstring('<advance height="325.0"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
-    u'<advance height="-500" width="2"/>'
+    u'<advance height="325"/>'
 
-    >>> element = ET.fromstring('<advance width="-0.0" height="-10.001"/>')
+    >>> element = ET.fromstring('<advance height="325.1"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
     >>> writer.getText()
-    u'<advance height="-10.001"/>'
+    u'<advance height="325.1"/>'
+
+    >>> element = ET.fromstring('<advance height="-325.0"/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAdvance(element, writer)
+    >>> writer.getText()
+    u'<advance height="-325"/>'
     """
     # INVALID DATA POSSIBILITY: value that can't be converted to float
     w = element.attrib.get("width", "0")
@@ -640,26 +660,84 @@ def _normalizeGlifImage(element, writer):
 
 def _normalizeGlifAnchor(element, writer):
     """
-    TO DO: expand doctests
-
-    # >>> element = ET.fromstring('<anchor x="0" y="0" name="" color="" identifier=""/>')
-    # >>> writer = XMLWriter(declaration=None)
-    # >>> _normalizeGlifAnchor(element, writer)
-    # >>> writer.getText()
-    # u'<anchor name="" x="0" y="0" color="" identifier=""/>'
-
-    >>> element = ET.fromstring('<anchor y="04.50" x="230" name="_above" color="1,0,0,.5" identifier="7B86ACED-F5D7-409E-A67B-AC3DA57B5DAC"/>')
+    everything
+    ----------
+    >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
     >>> writer.getText()
-    u'<anchor name="_above" x="230" y="4.5" color="1,0,0,0.5" identifier="7B86ACED-F5D7-409E-A67B-AC3DA57B5DAC"/>'
+    u'<anchor name="test" x="230" y="4.5" color="1,0,0,0.5" identifier="TEST"/>'
+
+    no name
+    -------
+    >>> element = ET.fromstring("<anchor x='230' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u'<anchor x="230" y="4.5" color="1,0,0,0.5" identifier="TEST"/>'
+
+    no x
+    ----
+    >>> element = ET.fromstring("<anchor name='test' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring("<anchor name='test' x='invalid' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u''
+
+    no y
+    ----
+    >>> element = ET.fromstring("<anchor name='test' x='230' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring("<anchor name='test' x='230' y='invalid' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u''
+
+    no color
+    --------
+    >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u'<anchor name="test" x="230" y="4.5" identifier="TEST"/>'
+
+    no identifier
+    -------------
+    >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' color='1,0,0,.5'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifAnchor(element, writer)
+    >>> writer.getText()
+    u'<anchor name="test" x="230" y="4.5" color="1,0,0,0.5"/>'
+
     """
     # INVALID DATA POSSIBILITY: no x defined
     # INVALID DATA POSSIBILITY: no y defined
     # INVALID DATA POSSIBILITY: x or y that can't be converted to float
+    x = element.attrib.get("x")
+    y = element.attrib.get("y")
+    # x or y undefined
+    if not x or not y:
+        return
+    # x or y improperly defined
+    try:
+        x = float(x)
+        y = float(y)
+    except ValueError:
+        return
     attrs = dict(
-        x=float(element.attrib["x"]),
-        y=float(element.attrib["y"])
+        x=x,
+        y=y
     )
     name = element.attrib.get("name")
     if name is not None:
