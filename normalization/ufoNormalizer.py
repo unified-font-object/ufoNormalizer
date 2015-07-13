@@ -584,17 +584,20 @@ def _normalizeGlifImage(element, writer):
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
     >>> writer.getText()
-    u'<image fileName="" xScale="" xyScale="" yxScale="" yScale="" xOffset="" yOffset="" color=""/>'
+    u''
 
     >>> element = ET.fromstring('<image fileName="Sketch 1.png" xOffset="100" yOffset="200" xScale=".75" yScale=".75" color="1,0,0,.5" />')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
     >>> writer.getText()
-    u'<image fileName="Sketch 1.png" xScale=".75" yScale=".75" xOffset="100" yOffset="200" color="1,0,0,.5"/>'
+    u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200" color="1,0,0,.5"/>'
     """
     # INVALID DATA POSSIBILITY: no file name defined
+    fileName = element.attrib["fileName"]
+    if not fileName:
+        return
     attrs = dict(
-        fileName=element.attrib["fileName"]
+        fileName=fileName
     )
     transformation = _normalizeGlifTransformation(element)
     attrs.update(transformation)
@@ -971,14 +974,14 @@ def _normalizeGlifPointAttributesFormat1(element):
 
 def _normalizeGlifComponentFormat1(element, writer):
     """
-    >>> component = '''<component base="A"/>'''
+    >>> component = "<component base='A'/>"
     >>> element = ET.fromstring(component)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifComponentFormat1(element, writer)
     >>> writer.getText()
     u'<component base="A"/>'
 
-    >>> component = '''<component xOffset="260" base="acutecmb.cap"/>'''
+    >>> component = "<component xOffset='260' base='acutecmb.cap'/>"
     >>> element = ET.fromstring(component)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifComponentFormat1(element, writer)
@@ -992,15 +995,15 @@ def _normalizeGlifComponentFormat1(element, writer):
 
 def _normalizeGlifComponentAttributesFormat1(element):
     """
-    >>> component = '''<component base="A"/>'''
+    >>> component = "<component base='A'/>"
     >>> element = ET.fromstring(component)
     >>> _normalizeGlifComponentAttributesFormat1(element)
     {'base': 'A'}
 
-    >>> component = '''<component xOffset="105" xScale=".75" yScale=".85" yOffset="200" base="B" xyScale="2" yxScale="0"/>'''
+    >>> component = "<component xOffset='105' xScale='.75' yScale='.85' yOffset='200' base='B' xyScale='2' yxScale='0'/>"
     >>> element = ET.fromstring(component)
-    >>> _normalizeGlifComponentAttributesFormat1(element)
-    {'xScale': '.75', 'base': 'B', 'xOffset': '105', 'yScale': '.85', 'yxScale': '0', 'xyScale': '2', 'yOffset': '200'}
+    >>> sorted(_normalizeGlifComponentAttributesFormat1(element).items())
+    [('base', 'B'), ('xOffset', 105.0), ('xScale', 0.75), ('xyScale', 2.0), ('yOffset', 200.0), ('yScale', 0.85)]
     """
     # INVALID DATA POSSIBILITY: no base defined
     # INVALID DATA POSSIBILITY: duplicate attributes
@@ -1169,14 +1172,14 @@ def _normalizeGlifPointAttributesFormat2(element):
 
 def _normalizeGlifComponentFormat2(element, writer):
     """
-    >>> component = '''<component base="A"/>'''
+    >>> component = "<component base='A'/>"
     >>> element = ET.fromstring(component)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifComponentFormat2(element, writer)
     >>> writer.getText()
     u'<component base="A"/>'
 
-    >>> component = '''<component xOffset="260" base="acutecmb.cap"/>'''
+    >>> component = "<component xOffset='260' base='acutecmb.cap'/>"
     >>> element = ET.fromstring(component)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifComponentFormat2(element, writer)
@@ -1188,15 +1191,15 @@ def _normalizeGlifComponentFormat2(element, writer):
 
 def _normalizeGlifComponentAttributesFormat2(element):
     """
-    >>> component = '''<component identifier="F8B150BD-3B11-47A9-BBD2-B2C4A721D734" base="A"/>'''
+    >>> component = "<component identifier='F8B150BD-3B11-47A9-BBD2-B2C4A721D734' base='A'/>"
     >>> element = ET.fromstring(component)
     >>> _normalizeGlifComponentAttributesFormat2(element)
     {'base': 'A', 'identifier': 'F8B150BD-3B11-47A9-BBD2-B2C4A721D734'}
 
-    >>> component = '''<component identifier="F8B150BD-3B11-47A9-BBD2-B2C4A721D734" xOffset="105" xScale=".75" yScale=".85" yOffset="200" base="B" xyScale="2" yxScale="0"/>'''
+    >>> component = "<component identifier='F8B150BD-3B11-47A9-BBD2-B2C4A721D734' xOffset='105' xScale='.75' yScale='.85' yOffset='200' base='B' xyScale='2' yxScale='0'/>"
     >>> element = ET.fromstring(component)
-    >>> _normalizeGlifComponentAttributesFormat2(element)
-    {'xScale': '.75', 'base': 'B', 'xOffset': '105', 'yScale': '.85', 'yxScale': '0', 'identifier': 'F8B150BD-3B11-47A9-BBD2-B2C4A721D734', 'xyScale': '2', 'yOffset': '200'}
+    >>> sorted(_normalizeGlifComponentAttributesFormat2(element).items())
+    [('base', 'B'), ('identifier', 'F8B150BD-3B11-47A9-BBD2-B2C4A721D734'), ('xOffset', 105.0), ('xScale', 0.75), ('xyScale', 2.0), ('yOffset', 200.0), ('yScale', 0.85)]
     """
     attrs = _normalizeGlifComponentAttributesFormat1(element)
     identifier = element.attrib.get("identifier")
@@ -1215,21 +1218,31 @@ _glifDefaultTransformation = dict(
 
 def _normalizeGlifTransformation(element):
     """
-    >>> element = ET.fromstring('<component base="B" xScale="1" xyScale="0" yxScale="0" yScale="1" xOffset="0" yOffset="0"/>')
-    >>> _normalizeGlifTransformation(element)
-    {'yScale': '1', 'yxScale': '0', 'yOffset': '0', 'xyScale': '0', 'xScale': '1', 'xOffset': '0'}
+    # nothing defined
 
-    >>> element = ET.fromstring('<component identifier="F8B150BD-3B11-47A9-BBD2-B2C4A721D734" xOffset="105" xScale=".75" yScale=".85" yOffset="200" base="B" xyScale="2" yxScale="0"/>')
+    >>> element = ET.fromstring("<test />")
     >>> _normalizeGlifTransformation(element)
-    {'yScale': '.85', 'yxScale': '0', 'yOffset': '200', 'xyScale': '2', 'xScale': '.75', 'xOffset': '105'}
+    {}
 
-    >>> element = ET.fromstring('<image fileName="Sketch 1.png" xOffset="100" yOffset="200" xScale=".75" yScale=".75" color="1,0,0,.5" />')
+    # default defined
+
+    >>> element = ET.fromstring("<test xScale='1' xyScale='0' yxScale='0' yScale='1' xOffset='0' yOffset='0' />")
     >>> _normalizeGlifTransformation(element)
-    {'xScale': '.75', 'yOffset': '200', 'xOffset': '100', 'yScale': '.75'}
+    {}
+
+    # non-default defined
+_normalizeGlifTransformation
+    >>> element = ET.fromstring("<test xScale='2' xyScale='3' yxScale='4' yScale='5' xOffset='6' yOffset='7' />")
+    >>> sorted(_normalizeGlifTransformation(element).items())
+    [('xOffset', 6.0), ('xScale', 2.0), ('xyScale', 3.0), ('yOffset', 7.0), ('yScale', 5.0), ('yxScale', 4.0)]
     """
     attrs = {}
     for attr, default in _glifDefaultTransformation.items():
         value = element.attrib.get(attr, default)
+        try:
+            value = float(value)
+        except ValueError:
+            continue
         if value != default:
             attrs[attr] = value
     return attrs
