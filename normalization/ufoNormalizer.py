@@ -292,9 +292,15 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
 def _normalizePlistFile(modTimes, ufoPath, *subpath):
     if subpathNeedsRefresh(modTimes, ufoPath, *subpath):
         data = subpathReadPlist(ufoPath, *subpath)
-        text = normalizePropertyList(data)
-        subpathWriteFile(text, ufoPath, *subpath)
-        modTimes[subpath[-1]] = subpathGetModTime(ufoPath, *subpath)
+        if data:
+            text = normalizePropertyList(data)
+            subpathWriteFile(text, ufoPath, *subpath)
+            modTimes[subpath[-1]] = subpathGetModTime(ufoPath, *subpath)
+        # Don't write empty plist files.
+        else:
+            subpathRemoveFile(ufoPath, *subpath)
+            if subpath[-1] in modTimes:
+                del modTimes[subpath[-1]]
 
 # metainfo.plist
 
@@ -2327,6 +2333,16 @@ def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
     inPath = subpathJoin(ufoPath, *fromSubpath)
     outPath = subpathJoin(ufoPath, *toSubpath)
     shutil.move(inPath, outPath)
+
+# remove
+
+def subpathRemoveFile(ufoPath, *subpath):
+    """
+    Remove a file.
+    """
+    if subpathExists(ufoPath, *subpath):
+        path = subpathJoin(ufoPath, *subpath)
+        os.remove(path)
 
 # mod times
 
