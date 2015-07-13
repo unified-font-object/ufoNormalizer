@@ -911,8 +911,40 @@ def _normalizeGlifGuideline(element, writer):
 
 def _normalizeGlifLib(element, writer):
     """
-    TO DO: doctests
+    - Don't write an empty element.
+
+    defined
+    -------
+    >>> e = '''
+    ... <lib>
+    ...     <dict>
+    ...         <key>foo</key>
+    ...         <string>bar</string>
+    ...     </dict>
+    ... </lib>
+    ... '''.strip()
+    >>> element = ET.fromstring(e)
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifLib(element, writer)
+    >>> writer.getText()
+    u'<lib>\\n\\t<dict>\\n\\t\\t<key>foo</key>\\n\\t\\t<string>bar</string>\\n\\t</dict>\\n</lib>'
+
+    undefined
+    ---------
+    >>> element = ET.fromstring("<lib></lib>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifLib(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring("<lib><dict></dict></lib>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifLib(element, writer)
+    >>> writer.getText()
+    u''
     """
+    if not len(element):
+        return
     obj = _convertPlistElementToObject(element[0])
     if obj:
         writer.beginElement("lib")
@@ -925,7 +957,7 @@ def _normalizeGlifNote(element, writer):
 
     defined
     -------
-    >>> element = ET.fromstring('<note>Blah</note>')
+    >>> element = ET.fromstring("<note>Blah</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
     >>> writer.getText()
@@ -951,7 +983,7 @@ def _normalizeGlifNote(element, writer):
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<note/>')
+    >>> element = ET.fromstring("<note/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
     >>> writer.getText()
