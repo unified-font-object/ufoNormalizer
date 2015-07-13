@@ -1268,9 +1268,7 @@ def _convertPlistElementToObject(element):
         # needs to convert to plistlib.Data
         raise NotImplementedError
     elif tag == "date":
-        # TO DO: implement this
-        # needs to convert to datetime.datetime
-        raise NotImplementedError
+        return plistlib._dateFromString(element.text)
     elif tag == "true":
         return True
     elif tag == "false":
@@ -1293,7 +1291,6 @@ name
 base
 format
 fileName
-base
 x
 y
 xScale
@@ -1419,12 +1416,22 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>'
 
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject({"a" : 20.0})
+        >>> writer.getText()
+        u'<dict>\\n\\t<key>a</key>\\n\\t<real>20</real>\\n</dict>'
+
         String:
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject("a")
         >>> writer.getText()
         u'<string>a</string>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject("1.000")
+        >>> writer.getText()
+        u'<string>1.000</string>'
 
         Boolean:
 
@@ -1450,6 +1457,26 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<real>-1.1</real>'
 
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(1.0)
+        >>> writer.getText()
+        u'<real>1</real>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(-1.0)
+        >>> writer.getText()
+        u'<real>-1</real>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(0.0)
+        >>> writer.getText()
+        u'<real>0</real>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(-0.0)
+        >>> writer.getText()
+        u'<real>0</real>'
+
         Integer:
 
         >>> writer = XMLWriter(declaration=None)
@@ -1463,12 +1490,38 @@ class XMLWriter(object):
         u'<integer>-1</integer>'
 
         >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(+1)
+        >>> writer.getText()
+        u'<integer>1</integer>'
+
+        >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(0)
         >>> writer.getText()
         u'<integer>0</integer>'
 
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(-0)
+        >>> writer.getText()
+        u'<integer>0</integer>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject(2015-01-01)
+        >>> writer.getText()
+        u'<integer>2013</integer>'
+
         Date:
-        # TO DO: need doctests
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> date = datetime.datetime(2012, 9, 1)
+        >>> writer.propertyListObject(date)
+        >>> writer.getText()
+        u'<date>2012-09-01T00:00:00Z</date>'
+
+        >>> writer = XMLWriter(declaration=None)
+        >>> date = datetime.datetime(2009, 11, 29, 16, 31, 53)
+        >>> writer.propertyListObject(date)
+        >>> writer.getText()
+        u'<date>2009-11-29T16:31:53Z</date>'
 
         Data:
 
@@ -1530,8 +1583,8 @@ class XMLWriter(object):
         self.simpleElement("integer", value=data)
 
     def _plistDate(self, data):
-        # TO DO: implement this. refer to plistlib.py.
-        raise NotImplementedError
+        data = plistlib._dateToString(data)
+        self.simpleElement("date", value=data)
 
     def _plistData(self, data):
         self.beginElement("data")
@@ -1544,7 +1597,25 @@ class XMLWriter(object):
 
     def attributesToString(self, attrs):
         """
-        TO DO: need doctests
+        >>> attrs = {'y': 187.0, 'x': 134.0, 'type': 'curve', 'smooth': 'yes', 'name': 'corner'}
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.attributesToString(attrs)
+        u'name="corner" x="134" y="187" type="curve" smooth="yes"'
+
+        >>> attrs = {'xScale': '.75', 'base': 'B', 'xOffset': '200.9876543212345', 'yScale': .85, 'yxScale': 00.000, 'xyScale': '105.000', 'yOffset': 200.9876543212345, 'x': 200.000}
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.attributesToString(attrs)
+        u'base="B" x="200" xScale=".75" xyScale="105.000" yxScale="0" yScale="0.85" xOffset="200.9876543212345" yOffset="200.9876543212"'
+
+        >>> attrs = {'base': '', 'color': '', 'fileName': '', 'format': '', 'identifier': '', 'name': '', 'smooth': '', 'type': '', 'x': '', 'xOffset': '', 'xScale': '', 'xyScale': '', 'y': '', 'yOffset': '', 'yScale': '', 'yxScale': ''}
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.attributesToString(attrs)
+        u'name="" base="" format="" fileName="" x="" y="" xScale="" xyScale="" yxScale="" yScale="" xOffset="" yOffset="" type="" smooth="" color="" identifier=""'
+
+        >>> attrs = {'snap': '', 'base': '', 'color': '', 'fileName': '', 'format': '', 'crackle': '', 'identifier': '', 'name': '', 'smooth': '', 'type': '', 'x': '', 'xOffset': '', 'xScale': '', 'xyScale': '', 'y': '', 'yOffset': '', 'yScale': '', 'yxScale': '', 'pop': ''}
+        >>> writer = XMLWriter(declaration=None)
+        >>> writer.attributesToString(attrs)
+        u'name="" base="" format="" fileName="" x="" y="" xScale="" xyScale="" yxScale="" yScale="" xOffset="" yOffset="" type="" smooth="" color="" identifier="" crackle="" pop="" snap=""'
         """
         sorter = [
             (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in attrs.items()
