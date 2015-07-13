@@ -341,7 +341,9 @@ def normalizeLibPlist(ufoPath):
 
 def normalizePropertyList(data):
     writer = XMLWriter(isPropertyList=True)
+    writer.beginElement("plist", attrs=dict(version="1.0"))
     writer.propertyListObject(data)
+    writer.endElement("plist")
     return writer.getText()
 
 # GLIF
