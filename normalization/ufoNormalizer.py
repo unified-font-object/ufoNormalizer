@@ -910,6 +910,9 @@ def _normalizeGlifGuideline(element, writer):
     writer.simpleElement("guideline", attrs=attrs)
 
 def _normalizeGlifLib(element, writer):
+    """
+    TO DO: doctests
+    """
     obj = _convertPlistElementToObject(element[0])
     if obj:
         writer.beginElement("lib")
@@ -918,18 +921,10 @@ def _normalizeGlifLib(element, writer):
 
 def _normalizeGlifNote(element, writer):
     r"""
-    >>> element = ET.fromstring('<note></note>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    u''
+    - Don't write an empty element.
 
-    >>> element = ET.fromstring('<note/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    u''
-
+    defined
+    -------
     >>> element = ET.fromstring('<note>Blah</note>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
@@ -947,6 +942,20 @@ def _normalizeGlifNote(element, writer):
     >>> _normalizeGlifNote(element, writer)
     >>> writer.getText()
     u'<note>\n\tA quick brown fox jumps over the lazy dog.\n\tP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>'
+
+    undefined
+    ---------
+    >>> element = ET.fromstring("<note></note>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring('<note/>')
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText()
+    u''
     """
     value = element.text
     if not value:
