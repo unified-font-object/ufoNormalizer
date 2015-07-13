@@ -92,6 +92,9 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True):
 
 def normalizeGlyphsDirectoryNames(ufoPath):
     """
+    Normalize glyphs directory names following
+    UFO 3 user name to file name convention.
+
     non-standard directory names
     -----------------------------
     >>> oldLayers = {
@@ -208,6 +211,9 @@ def normalizeLayerInfoPlist(ufoPath, layerDirectory):
 
 def normalizeGlyphNames(ufoPath, layerDirectory):
     """
+    Normalize GLIF file names following
+    UFO 3 user name to file name convention.
+
     non-standard file names
     -----------------------
     >>> oldNames = {
@@ -420,67 +426,75 @@ def normalizeGLIF(ufoPath, *subpath):
 
 def _normalizeGlifUnicode(element, writer):
     """
-    >>> element = ET.fromstring('<unicode />')
+    - Don't write unicode element if hex attribute is not defined.
+    - Don't write unicode element if value for hex value is not a proper hex value.
+    - Write hex value as all uppercase, zero padded string.
+
+    without hex
+    -----------
+    >>> element = ET.fromstring("<unicode />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<unicode hex=""/>')
+    >>> element = ET.fromstring("<unicode hex=''/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<unicode hexagon=""/>')
+    >>> element = ET.fromstring("<unicode hexagon=''/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<unicode hex="0041"/>')
+    >>> element = ET.fromstring("<unicode hex='xyz'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifUnicode(element, writer)
+    >>> writer.getText()
+    u''
+
+    with hex
+    --------
+    >>> element = ET.fromstring("<unicode hex='0041'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u'<unicode hex="0041"/>'
 
-    >>> element = ET.fromstring('<unicode hex="41"/>')
+    >>> element = ET.fromstring("<unicode hex='41'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u'<unicode hex="0041"/>'
 
-    >>> element = ET.fromstring('<unicode hex="ea"/>')
+    >>> element = ET.fromstring("<unicode hex='ea'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u'<unicode hex="00EA"/>'
 
-    >>> element = ET.fromstring('<unicode hex="2Af"/>')
+    >>> element = ET.fromstring("<unicode hex='2Af'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u'<unicode hex="02AF"/>'
 
-    >>> element = ET.fromstring('<unicode hex="xyz"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u''
-
-    >>> element = ET.fromstring('<unicode hex="0000fFfF"/>')
+    >>> element = ET.fromstring("<unicode hex='0000fFfF'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u'<unicode hex="FFFF"/>'
 
-    >>> element = ET.fromstring('<unicode hex="10000"/>')
+    >>> element = ET.fromstring("<unicode hex='10000'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
     u'<unicode hex="10000"/>'
 
-    >>> element = ET.fromstring('<unicode hex="abcde"/>')
+    >>> element = ET.fromstring("<unicode hex='abcde'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
     >>> writer.getText()
@@ -501,6 +515,10 @@ def _normalizeGlifUnicode(element, writer):
 
 def _normalizeGlifAdvance(element, writer):
     """
+    - Don't write default values (width=0, height=0)
+    - Ignore values that can't be converted to a number.
+    - Don't write an empty element.
+
     undefined
     ---------
     >>> element = ET.fromstring("<advance />")
@@ -583,9 +601,12 @@ def _normalizeGlifAdvance(element, writer):
     """
     # INVALID DATA POSSIBILITY: value that can't be converted to float
     w = element.attrib.get("width", "0")
-    w = float(w)
     h = element.attrib.get("height", "0")
-    h = float(h)
+    try:
+        w = float(w)
+        h = float(h)
+    except ValueError:
+        return
     attrs = {}
     # filter out default value (0)
     if w:
@@ -598,10 +619,12 @@ def _normalizeGlifAdvance(element, writer):
 
 def _normalizeGlifImage(element, writer):
     """
+    - Don't write if fileName is not defined.
+
     everything
     ----------
 
-    >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5' />")
+    >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
     >>> writer.getText()
@@ -619,7 +642,7 @@ def _normalizeGlifImage(element, writer):
     no file name
     ------------
 
-    >>> element = ET.fromstring("<image xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5' />")
+    >>> element = ET.fromstring("<image xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
     >>> writer.getText()
@@ -660,6 +683,8 @@ def _normalizeGlifImage(element, writer):
 
 def _normalizeGlifAnchor(element, writer):
     """
+    - Don't write if x or y are not defined.
+
     everything
     ----------
     >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
@@ -752,6 +777,9 @@ def _normalizeGlifAnchor(element, writer):
 
 def _normalizeGlifGuideline(element, writer):
     """
+    - Don't write if angle is defined but either x or y are not defined.
+    - Don't write if both x and y are defined but angle is not defined.
+
     everything
     ----------
     >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
