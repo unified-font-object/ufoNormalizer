@@ -1648,19 +1648,23 @@ _glifDefaultTransformation = dict(
 
 def _normalizeGlifTransformation(element):
     """
-    # nothing defined
+    - Don't write default values.
 
+    empty
+    -----
     >>> element = ET.fromstring("<test />")
     >>> _normalizeGlifTransformation(element)
     {}
 
-    # default defined
-
+    
+    default
+    -------
     >>> element = ET.fromstring("<test xScale='1' xyScale='0' yxScale='0' yScale='1' xOffset='0' yOffset='0' />")
     >>> _normalizeGlifTransformation(element)
     {}
 
-    # non-default defined
+    non-default
+    -----------
     >>> element = ET.fromstring("<test xScale='2' xyScale='3' yxScale='4' yScale='5' xOffset='6' yOffset='7' />")
     >>> sorted(_normalizeGlifTransformation(element).items())
     [('xOffset', 6.0), ('xScale', 2.0), ('xyScale', 3.0), ('yOffset', 7.0), ('yScale', 5.0), ('yxScale', 4.0)]
@@ -1678,6 +1682,9 @@ def _normalizeGlifTransformation(element):
 
 def _normalizeColorString(value):
     """
+    - Write the string as comma separated numbers, folowing the
+      number normalization rules.
+
     >>> _normalizeColorString("")
     >>> _normalizeColorString("1,1,1")
     >>> _normalizeColorString("1,1,1,1")
@@ -1698,7 +1705,33 @@ def _normalizeColorString(value):
 
 def _convertPlistElementToObject(element):
     """
-    TO DO: need doctests
+    >>> element = ET.fromstring("<array></array>")
+    >>> _convertPlistElementToObject(element)
+    []
+    >>> element = ET.fromstring("<dict></dict>")
+    >>> _convertPlistElementToObject(element)
+    {}
+    >>> element = ET.fromstring("<dict><key>foo</key><string>bar</string></dict>")
+    >>> _convertPlistElementToObject(element)
+    {'foo': 'bar'}
+    >>> element = ET.fromstring("<string>foo</string>")
+    >>> _convertPlistElementToObject(element)
+    'foo'
+    >>> element = ET.fromstring("<date>2015-07-05T22:16:18Z</date>")
+    >>> _convertPlistElementToObject(element)
+    datetime.datetime(2015, 7, 5, 22, 16, 18)
+    >>> element = ET.fromstring("<true />")
+    >>> _convertPlistElementToObject(element)
+    True
+    >>> element = ET.fromstring("<false />")
+    >>> _convertPlistElementToObject(element)
+    False
+    >>> element = ET.fromstring("<real>1.1</real>")
+    >>> _convertPlistElementToObject(element)
+    1.1
+    >>> element = ET.fromstring("<integer>1</integer>")
+    >>> _convertPlistElementToObject(element)
+    1
     """
     # INVALID DATA POSSIBILITY: invalid value string
     obj = None
@@ -1847,8 +1880,8 @@ class XMLWriter(object):
 
     def propertyListObject(self, data):
         """
-        Array:
-
+        Array
+        -----
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject([])
         >>> writer.getText()
@@ -1859,8 +1892,8 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<array>\\n\\t<string>a</string>\\n</array>'
 
-        Dict:
-
+        Dict
+        ----
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject({})
         >>> writer.getText()
@@ -1876,8 +1909,8 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<dict>\\n\\t<key>a</key>\\n\\t<real>20</real>\\n</dict>'
 
-        String:
-
+        String
+        ------
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject("a")
         >>> writer.getText()
@@ -1888,8 +1921,8 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<string>1.000</string>'
 
-        Boolean:
-
+        Boolean
+        -------
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(True)
         >>> writer.getText()
@@ -1900,8 +1933,8 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<false/>'
 
-        Float:
-
+        Float
+        -----
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(1.1)
         >>> writer.getText()
@@ -1932,8 +1965,8 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<real>0</real>'
 
-        Integer:
-
+        Integer
+        -------
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(1)
         >>> writer.getText()
@@ -1964,8 +1997,8 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<integer>2013</integer>'
 
-        Date:
-
+        Date
+        ----
         >>> writer = XMLWriter(declaration=None)
         >>> date = datetime.datetime(2012, 9, 1)
         >>> writer.propertyListObject(date)
@@ -1978,8 +2011,8 @@ class XMLWriter(object):
         >>> writer.getText()
         u'<date>2009-11-29T16:31:53Z</date>'
 
-        Data:
-
+        Data
+        ----
         >>> writer = XMLWriter(declaration=None)
         >>> data = plistlib.Data("abc")
         >>> writer.propertyListObject(data)
@@ -2052,25 +2085,15 @@ class XMLWriter(object):
 
     def attributesToString(self, attrs):
         """
-        >>> attrs = {'y': 187.0, 'x': 134.0, 'type': 'curve', 'smooth': 'yes', 'name': 'corner'}
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.attributesToString(attrs)
-        u'name="corner" x="134" y="187" type="curve" smooth="yes"'
+        - Sort the known attributes in the preferred order.
+        - Sort unknown attributes in alphabetical order and
+          place them after the known attributes.
+        - Format as space separated name="value".
 
-        >>> attrs = {'xScale': '.75', 'base': 'B', 'xOffset': '200.9876543212345', 'yScale': .85, 'yxScale': 00.000, 'xyScale': '105.000', 'yOffset': 200.9876543212345, 'x': 200.000}
+        >>> attrs = dict(a="blah", x=1, y=2.1)
         >>> writer = XMLWriter(declaration=None)
         >>> writer.attributesToString(attrs)
-        u'base="B" x="200" xScale=".75" xyScale="105.000" yxScale="0" yScale="0.85" xOffset="200.9876543212345" yOffset="200.9876543212"'
-
-        >>> attrs = {'base': '', 'color': '', 'fileName': '', 'format': '', 'identifier': '', 'name': '', 'smooth': '', 'type': '', 'x': '', 'xOffset': '', 'xScale': '', 'xyScale': '', 'y': '', 'yOffset': '', 'yScale': '', 'yxScale': ''}
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.attributesToString(attrs)
-        u'name="" base="" format="" fileName="" x="" y="" xScale="" xyScale="" yxScale="" yScale="" xOffset="" yOffset="" type="" smooth="" color="" identifier=""'
-
-        >>> attrs = {'snap': '', 'base': '', 'color': '', 'fileName': '', 'format': '', 'crackle': '', 'identifier': '', 'name': '', 'smooth': '', 'type': '', 'x': '', 'xOffset': '', 'xScale': '', 'xyScale': '', 'y': '', 'yOffset': '', 'yScale': '', 'yxScale': '', 'pop': ''}
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.attributesToString(attrs)
-        u'name="" base="" format="" fileName="" x="" y="" xScale="" xyScale="" yxScale="" yScale="" xOffset="" yOffset="" type="" smooth="" color="" identifier="" crackle="" pop="" snap=""'
+        u'x="1" y="2.1" a="blah"'
         """
         sorter = [
             (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in attrs.items()
