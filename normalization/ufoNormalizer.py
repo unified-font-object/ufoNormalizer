@@ -910,7 +910,7 @@ def _normalizeGlifGuideline(element, writer):
     writer.simpleElement("guideline", attrs=attrs)
 
 def _normalizeGlifLib(element, writer):
-    """
+    r"""
     - Don't write an empty element.
 
     defined
@@ -927,7 +927,7 @@ def _normalizeGlifLib(element, writer):
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifLib(element, writer)
     >>> writer.getText()
-    u'<lib>\\n\\t<dict>\\n\\t\\t<key>foo</key>\\n\\t\\t<string>bar</string>\\n\\t</dict>\\n</lib>'
+    u'<lib>\n\t<dict>\n\t\t<key>foo</key>\n\t\t<string>bar</string>\n\t</dict>\n</lib>'
 
     undefined
     ---------
@@ -998,6 +998,12 @@ def _normalizeGlifNote(element, writer):
 
 def _normalizeGlifOutlineFormat1(element, writer):
     r"""
+    - Don't write an empty element.
+    - Retain contour and component order except for implied anchors in < UFO 3.
+    - If the UFO format < 3, move implied anchors to the end.
+
+    empty
+    -----
     >>> outline = '''
     ... <outline>
     ... </outline>
@@ -1006,98 +1012,66 @@ def _normalizeGlifOutlineFormat1(element, writer):
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifOutlineFormat1(element, writer)
     >>> writer.getText()
-    u'<outline>\n</outline>'
+    u''
 
     >>> outline = '''
     ... <outline>
-    ...     <contour>
-    ...     </contour>
+    ...     <contour />
+    ...     <component />
     ... </outline>
     ... '''
     >>> element = ET.fromstring(outline)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifOutlineFormat1(element, writer)
     >>> writer.getText()
-    u'<outline>\n\t<contour>\n\t</contour>\n</outline>'
+    u''
 
-    >>> outline = '''
-    ... <outline>
-    ...     <component base=""/>
-    ... </outline>
-    ... '''
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText()
-    u'<outline>\n\t<component base=""/>\n</outline>'
-
+    element order
+    -------------
     >>> outline = '''
     ... <outline>
     ...     <contour>
-    ...         <point type="line" y="0" x="0"/>
+    ...         <point type="move" y="0" x="0" name="anchor1"/>
     ...     </contour>
-    ... </outline>
-    ... '''
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText()
-    u'<outline>\n\t<contour>\n\t\t<point x="0" y="0" type="line"/>\n\t</contour>\n</outline>'
-
-    >>> outline = '''
-    ... <outline>
-    ...     <component base="C"/>
     ...     <contour>
-    ...         <point type="line" y="0" x="0"/>
+    ...         <point type="line" y="1" x="1"/>
+    ...     </contour>
+    ...     <component base="2"/>
+    ...     <contour>
+    ...         <point type="line" y="3" x="3"/>
+    ...     </contour>
+    ...     <component base="4"/>
+    ...     <contour>
+    ...         <point type="move" y="0" x="0" name="anchor2"/>
     ...     </contour>
     ... </outline>
     ... '''
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText()
-    u'<outline>\n\t<component base="C"/>\n\t<contour>\n\t\t<point x="0" y="0" type="line"/>\n\t</contour>\n</outline>'
-
-    >>> outline = '''
+    >>> expected = u'''
     ... <outline>
     ...     <contour>
-    ...         <point y="250" x="150"/>
-    ...         <point x="193" y="187"/>
+    ...         <point x="1" y="1" type="line"/>
+    ...     </contour>
+    ...     <component base="2"/>
+    ...     <contour>
+    ...         <point x="3" y="3" type="line"/>
+    ...     </contour>
+    ...     <component base="4"/>
+    ...     <contour>
+    ...         <point name="anchor1" x="0" y="0" type="move"/>
+    ...     </contour>
+    ...     <contour>
+    ...         <point name="anchor2" x="0" y="0" type="move"/>
     ...     </contour>
     ... </outline>
-    ... '''
+    ... '''.strip().replace("    ", "\t")
     >>> element = ET.fromstring(outline)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText()
-    u'<outline>\n\t<contour>\n\t\t<point x="150" y="250"/>\n\t\t<point x="193" y="187"/>\n\t</contour>\n</outline>'
-
-#     >>> outline = '''
-#     ... <outline>
-#     ...     <contour>
-#     ...         <point y="250" x="150"/>
-#     ...     </contour>
-#     ... </outline>
-#     ... '''
-#     >>> element = ET.fromstring(outline)
-#     >>> writer = XMLWriter(declaration=None)
-#     >>> _normalizeGlifOutlineFormat1(element, writer)
-#     >>> writer.getText()
-#     u'<outline>\n\t<contour>\n\t\t<point x="150" y="250"/>\n\t</contour>\n</outline>'
-
-#     >>> outline = '''
-#     ... <outline>
-#     ...     <contour>
-#     ...         <point type="move" y="20" x="20"/>
-#     ...     </contour>
-#     ... </outline>
-#     ... '''
-#     >>> element = ET.fromstring(outline)
-#     >>> writer = XMLWriter(declaration=None)
-#     >>> _normalizeGlifOutlineFormat1(element, writer)
-#     >>> writer.getText()
-#     u'<outline>\n\t<contour>\n\t\t<point x="20" y="20" type="move"/>\n\t</contour>\n</outline>'
+    >>> writer.getText() == expected
+    True
     """
+    if not len(element):
+        return
     writer.beginElement("outline")
     anchors = []
     for subElement in element:
@@ -1109,12 +1083,16 @@ def _normalizeGlifOutlineFormat1(element, writer):
         elif tag == "component":
             _normalizeGlifComponentFormat1(subElement, writer)
     for anchor in anchors:
+        writer.beginElement("contour")
         attrs = dict(
             type="move",
             x=anchor["x"],
             y=anchor["y"]
         )
+        if "name" in anchor:
+            attrs["name"] = anchor["name"]
         writer.simpleElement("point", attrs=attrs)
+        writer.endElement("contour")
     writer.endElement("outline")
 
 def _normalizeGlifContourFormat1(element, writer):
@@ -1194,6 +1172,8 @@ def _normalizeGlifContourFormat1(element, writer):
             continue
         attrs = _normalizeGlifPointAttributesFormat1(subElement)
         points.append(attrs)
+    if not len(points):
+        return
     # anchor
     if len(points) == 1 and points[0]["type"] == "move":
         return points[0]
@@ -1263,6 +1243,8 @@ def _normalizeGlifComponentFormat1(element, writer):
     # INVALID DATA POSSIBILITY: no base defined
     # INVALID DATA POSSIBILITY: unknown child element
     attrs = _normalizeGlifComponentAttributesFormat1(element)
+    if not attrs:
+        return
     writer.simpleElement("component", attrs=attrs)
 
 def _normalizeGlifComponentAttributesFormat1(element):
@@ -1279,6 +1261,9 @@ def _normalizeGlifComponentAttributesFormat1(element):
     """
     # INVALID DATA POSSIBILITY: no base defined
     # INVALID DATA POSSIBILITY: duplicate attributes
+    base = element.attrib.get("base")
+    if not base:
+        return
     attrs = dict(
         base=element.attrib["base"]
     )
