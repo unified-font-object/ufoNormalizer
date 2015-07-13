@@ -752,31 +752,124 @@ def _normalizeGlifAnchor(element, writer):
 
 def _normalizeGlifGuideline(element, writer):
     """
-    TO DO: expand doctests
-
-    # >>> element = ET.fromstring('<guideline x="0" y="0" angle="0" name="" color="" identifier=""/>')
-    # >>> writer = XMLWriter(declaration=None)
-    # >>> _normalizeGlifGuideline(element, writer)
-    # >>> writer.getText()
-    # u'<guideline name="" x="0" y="0" color="" identifier="" angle="0"/>'
-
-    >>> element = ET.fromstring('<guideline x="670.325" y="-41" angle="360" name="accent height" color=".2,.3,.4,.5" identifier="#horizontal"/>')
+    everything
+    ----------
+    >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifGuideline(element, writer)
     >>> writer.getText()
-    u'<guideline name="accent height" x="670.325" y="-41" color="0.2,0.3,0.4,0.5" identifier="#horizontal" angle="360"/>'
+    u'<guideline name="test" x="1" y="2" angle="3" color="1,0,0,0.5" identifier="TEST"/>'
+
+    no x
+    ----
+    >>> element = ET.fromstring("<guideline y='2' name='test' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u'<guideline name="test" y="2" color="1,0,0,0.5" identifier="TEST"/>'
+
+    >>> element = ET.fromstring("<guideline y='2' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring("<guideline x='invalid' y='2' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u''
+
+    no y
+    ----
+    >>> element = ET.fromstring("<guideline x='1' name='test' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u'<guideline name="test" x="1" color="1,0,0,0.5" identifier="TEST"/>'
+
+    >>> element = ET.fromstring("<guideline x='1' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u''
+
+    >>> element = ET.fromstring("<guideline x='1' y='invalid' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u''
+
+    no angle
+    --------
+    >>> element = ET.fromstring("<guideline x='1' y='2' name='test' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u''
+
+    no name
+    -------
+    >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' color='1,0,0,.5' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u'<guideline x="1" y="2" angle="3" color="1,0,0,0.5" identifier="TEST"/>'
+
+    no color
+    --------
+    >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' name='test' identifier='TEST'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u'<guideline name="test" x="1" y="2" angle="3" identifier="TEST"/>'
+
+    no identifier
+    -------------
+    >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' name='test' color='1,0,0,.5'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifGuideline(element, writer)
+    >>> writer.getText()
+    u'<guideline name="test" x="1" y="2" angle="3" color="1,0,0,0.5"/>'
     """
-    # INVALID DATA POSSIBILITY: no x defined
-    # INVALID DATA POSSIBILITY: no y defined
-    # INVALID DATA POSSIBILITY: angle not defined following spec
+    # INVALID DATA POSSIBILITY: x, y and angle not defined according to the spec
+    # INVALID DATA POSSIBILITY: angle < 0 or > 360
     # INVALID DATA POSSIBILITY: x, y or angle that can't be converted to float
-    attrs = dict(
-        x=float(element.attrib["x"]),
-        y=float(element.attrib["y"])
-    )
+    x = element.attrib.get("x")
+    y = element.attrib.get("y")
     angle = element.attrib.get("angle")
+    # either x or y must be defined
+    if not x and not y:
+        return
+    # if angle is specified, x and y must be specified
+    if (not x or not y) and angle:
+        return
+    # if x and y are specified, angle must be specified
+    if (x and y) and not angle:
+        return
+    # value errors
+    if x:
+        try:
+            x = float(x)
+        except ValueError:
+            return
+    if y:
+        try:
+            y = float(y)
+        except ValueError:
+            return
+    if angle:
+        try:
+            angle = float(angle)
+        except ValueError:
+            return
+    attrs = {}
+    if x is not None:
+        attrs["x"] = x
+    if y is not None:
+        attrs["y"] = y
     if angle is not None:
-        attrs["angle"] = float(angle)
+        attrs["angle"] = angle
     name = element.attrib.get("name")
     if name is not None:
         attrs["name"] = name
@@ -1428,6 +1521,7 @@ format
 fileName
 x
 y
+angle
 xScale
 xyScale
 yxScale
