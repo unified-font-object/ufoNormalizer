@@ -590,7 +590,7 @@ def _normalizeGlifImage(element, writer):
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
     >>> writer.getText()
-    u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200" color="1,0,0,.5"/>'
+    u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200" color="1,0,0,0.5"/>'
     """
     # INVALID DATA POSSIBILITY: no file name defined
     fileName = element.attrib["fileName"]
@@ -610,17 +610,17 @@ def _normalizeGlifAnchor(element, writer):
     """
     TO DO: expand doctests
 
-    >>> element = ET.fromstring('<anchor x="0" y="0" name="" color="" identifier=""/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u'<anchor name="" x="0" y="0" color="" identifier=""/>'
+    # >>> element = ET.fromstring('<anchor x="0" y="0" name="" color="" identifier=""/>')
+    # >>> writer = XMLWriter(declaration=None)
+    # >>> _normalizeGlifAnchor(element, writer)
+    # >>> writer.getText()
+    # u'<anchor name="" x="0" y="0" color="" identifier=""/>'
 
     >>> element = ET.fromstring('<anchor y="04.50" x="230" name="_above" color="1,0,0,.5" identifier="7B86ACED-F5D7-409E-A67B-AC3DA57B5DAC"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
     >>> writer.getText()
-    u'<anchor name="_above" x="230" y="4.5" color="1,0,0,.5" identifier="7B86ACED-F5D7-409E-A67B-AC3DA57B5DAC"/>'
+    u'<anchor name="_above" x="230" y="4.5" color="1,0,0,0.5" identifier="7B86ACED-F5D7-409E-A67B-AC3DA57B5DAC"/>'
     """
     # INVALID DATA POSSIBILITY: no x defined
     # INVALID DATA POSSIBILITY: no y defined
@@ -644,17 +644,17 @@ def _normalizeGlifGuideline(element, writer):
     """
     TO DO: expand doctests
 
-    >>> element = ET.fromstring('<guideline x="0" y="0" angle="0" name="" color="" identifier=""/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u'<guideline name="" x="0" y="0" color="" identifier="" angle="0"/>'
+    # >>> element = ET.fromstring('<guideline x="0" y="0" angle="0" name="" color="" identifier=""/>')
+    # >>> writer = XMLWriter(declaration=None)
+    # >>> _normalizeGlifGuideline(element, writer)
+    # >>> writer.getText()
+    # u'<guideline name="" x="0" y="0" color="" identifier="" angle="0"/>'
 
     >>> element = ET.fromstring('<guideline x="670.325" y="-41" angle="360" name="accent height" color=".2,.3,.4,.5" identifier="#horizontal"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifGuideline(element, writer)
     >>> writer.getText()
-    u'<guideline name="accent height" x="670.325" y="-41" color=".2,.3,.4,.5" identifier="#horizontal" angle="360"/>'
+    u'<guideline name="accent height" x="670.325" y="-41" color="0.2,0.3,0.4,0.5" identifier="#horizontal" angle="360"/>'
     """
     # INVALID DATA POSSIBILITY: no x defined
     # INVALID DATA POSSIBILITY: no y defined
@@ -1249,11 +1249,23 @@ _normalizeGlifTransformation
 
 def _normalizeColorString(value):
     """
-    TO DO: need doctests
+    >>> _normalizeColorString("")
+    >>> _normalizeColorString("1,1,1")
+    >>> _normalizeColorString("1,1,1,1")
+    '1,1,1,1'
+    >>> _normalizeColorString(".1,.1,.1,.1")
+    '0.1,0.1,0.1,0.1'
     """
-    # TO DO: implement this
     # INVALID DATA POSSIBILITY: bad color string
-    return value
+    # INVALID DATA POSSIBILITY: value < 0 or > 1
+    if value.count(",") != 3:
+        return
+    try:
+        r, g, b, a = (float(i) for i in value.split(","))
+    except ValueError:
+        return
+    color = (xmlConvertFloat(i) for i in (r, g, b, a))
+    return ",".join(color)
 
 def _convertPlistElementToObject(element):
     """
