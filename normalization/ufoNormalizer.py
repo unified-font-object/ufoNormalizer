@@ -578,22 +578,54 @@ def _normalizeGlifAdvance(element, writer):
 
 def _normalizeGlifImage(element, writer):
     """
-    TO DO: expand doctests
+    everything
+    ----------
 
-    >>> element = ET.fromstring('<image fileName="" xOffset="" yOffset="" color="" xScale="" xyScale="" yxScale="" yScale=""/>')
+    >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5' />")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifImage(element, writer)
+    >>> writer.getText()
+    u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200" color="1,0,0,0.5"/>'
+
+    empty
+    -----
+
+    >>> element = ET.fromstring("<image />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
     >>> writer.getText()
     u''
 
-    >>> element = ET.fromstring('<image fileName="Sketch 1.png" xOffset="100" yOffset="200" xScale=".75" yScale=".75" color="1,0,0,.5" />')
+    no file name
+    ------------
+
+    >>> element = ET.fromstring("<image xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5' />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
     >>> writer.getText()
-    u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200" color="1,0,0,0.5"/>'
+    u''
+
+    no transformation
+    -----------------
+
+    >>> element = ET.fromstring("<image fileName='Sketch 1.png' color='1,0,0,.5' />")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifImage(element, writer)
+    >>> writer.getText()
+    u'<image fileName="Sketch 1.png" color="1,0,0,0.5"/>'
+
+    no color
+    --------
+
+    >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75'/>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifImage(element, writer)
+    >>> writer.getText()
+    u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200"/>'
     """
     # INVALID DATA POSSIBILITY: no file name defined
-    fileName = element.attrib["fileName"]
+    # INVALID DATA POSSIBILITY: non-existent file referenced
+    fileName = element.attrib.get("fileName")
     if not fileName:
         return
     attrs = dict(
