@@ -1653,7 +1653,6 @@ def _normalizeGlifTransformation(element):
     {}
 
     # non-default defined
-_normalizeGlifTransformation
     >>> element = ET.fromstring("<test xScale='2' xyScale='3' yxScale='4' yScale='5' xOffset='6' yOffset='7' />")
     >>> sorted(_normalizeGlifTransformation(element).items())
     [('xOffset', 6.0), ('xScale', 2.0), ('xyScale', 3.0), ('yOffset', 7.0), ('yScale', 5.0), ('yxScale', 4.0)]
