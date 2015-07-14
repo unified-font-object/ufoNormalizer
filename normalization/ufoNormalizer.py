@@ -1,5 +1,7 @@
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import time
 import os
 import shutil
 from xml.etree import cElementTree as ET
@@ -11,13 +13,57 @@ from collections import OrderedDict
 
 """
 - filter out unknown attributes and subelements
-- add command line functionality (may require a file rename)
 - run through the mod times before writing and make sure that
   all registered files exist in the UFO.
 - things that need to be improved are marked with "# TO DO"
 """
 
 __version__ = "0a1"
+description = """
+UFO Normalizer (version %s):
+
+This tool processes the contents of a UFO and normalizes
+all possible files to a standard XML formatting, data
+structure and file naming scheme.
+""" % __version__
+
+
+def runFromCommandline():
+    import argparse
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("input", help="Path to a UFO to normalize.", nargs="?")
+    parser.add_argument("-t", "--test", help="Run the normalizer's internal tests.", action="store_true")
+    parser.add_argument("-o", "--output", help="Output path. If not given, the input path will be used.")
+    parser.add_argument("-a", "--all", help="Normalize all files in the UFO. By default, only files modified since the previous normalization will be processed.", action="store_true")
+    args = parser.parse_args()
+    if args.test:
+        runTests()
+        return
+    inputPath = args.input
+    outputPath = args.output
+    onlyModified = not args.all
+    if inputPath is None:
+        print "No input path was specified."
+        return
+    if not os.path.exists(inputPath):
+        print "Input path does not exist:", inputPath
+        return
+    if os.path.splitext(inputPath)[-1].lower() != ".ufo":
+        print "Input path is not a UFO:", inputPath
+        return
+    message = u"Normalizing \"%s\"." % os.path.basename(inputPath)
+    if not onlyModified:
+        message += " Processing all files."
+    print message
+    start = time.time()
+    normalizeUFO(inputPath, outputPath=outputPath, onlyModified=onlyModified)
+    runtime = time.time() - start
+    print "Normalization complete (%.4f seconds)." % runtime
+
+# ---------
+# Internals
+# ---------
+
 modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
 imageReferencesLibKey = "org.unifiedfontobject.normalizer.imageReferences"
 
@@ -2696,12 +2742,14 @@ def handleClash2(existing=[], prefix="", suffix=""):
     # finished
     return finalName
 
-
 # -------
 # Testing
 # -------
 
-if __name__ == "__main__":
+def _runProfile(outPath):
+    normalizeUFO(outPath)
+
+def runTests():
     # doctests
     import doctest
     doctest.testmod()
@@ -2719,17 +2767,13 @@ if __name__ == "__main__":
         paths.append((inPath, outPath))
 
     if paths:
-
         # profile test
         import cProfile
 
         inPath, outPath = paths[0]
         shutil.copytree(inPath, outPath)
 
-        def runProfile():
-            normalizeUFO(outPath)
-
-        cProfile.run("runProfile()", sort="tottime")
+        cProfile.run("_runProfile('%s')" % outPath, sort="tottime")
         shutil.rmtree(outPath)
 
         # general test
@@ -2741,3 +2785,7 @@ if __name__ == "__main__":
             normalizeUFO(outPath)
             t = time.time() - s
             print os.path.basename(inPath) + ":", t, "seconds"
+
+
+if __name__ == "__main__":
+    runFromCommandline()
