@@ -12,7 +12,6 @@ import glob
 from collections import OrderedDict
 
 """
-- normalize glif lib public.markColor
 - filter out unknown attributes and subelements
 - add doctests for the image purging
 - things that need to be improved are marked with "# TO DO"
@@ -268,9 +267,28 @@ def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
     return referencedImages
 
 def normalizeLayerInfoPlist(ufoPath, layerDirectory):
-    # TO DO: normalize colors
     if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
-        _normalizePlistFile({}, ufoPath, *[layerDirectory, "layerinfo.plist"])
+        _normalizePlistFile({}, ufoPath, *[layerDirectory, "layerinfo.plist"], preprocessor=_normalizeLayerInfoColor)
+
+def _normalizeLayerInfoColor(obj):
+    """
+    - Normalize the color if specified.
+
+    >>> obj = dict(color="1,0,0,.5")
+    >>> _normalizeLayerInfoColor(obj)
+    >>> obj
+    {'color': '1,0,0,0.5'}
+
+    >>> obj = dict(color="invalid")
+    >>> _normalizeLayerInfoColor(obj)
+    >>> obj
+    {}
+    """
+    if "color" in obj:
+        color = obj.pop("color")
+        color = _normalizeColorString(color)
+        if color is not None:
+            obj["color"] = color
 
 def normalizeGlyphNames(ufoPath, layerDirectory):
     """
@@ -613,6 +631,8 @@ def normalizePropertyList(data, preprocessor=None):
 
 def normalizeGLIF(ufoPath, *subpath):
     """
+    - Normalize the mark color if specified.
+
     TO DO: need doctests
     The best way to test this is going to be have a GLIF
     that contains all of the element types. This can be
@@ -662,6 +682,13 @@ def normalizeGLIF(ufoPath, *subpath):
         elif tag == "lib":
             lib = element
     imageFileName = None
+    # normalize the mark color
+    if lib is not None:
+        if "public.markColor" in lib:
+            color = lib.pop("public.markColor")
+            color = _normalizeColorString(color)
+            if color is not None:
+                lib["public.markColor"] = color
     # write the data
     writer.beginElement("glyph", attrs=dict(name=name, format=glifVersion))
     for uni in unicodes:
