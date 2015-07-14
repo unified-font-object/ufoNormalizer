@@ -12,9 +12,9 @@ import glob
 from collections import OrderedDict
 
 """
+- normalize glif lib public.markColor
 - filter out unknown attributes and subelements
-- run through the mod times before writing and make sure that
-  all registered files exist in the UFO.
+- add doctests for the image purging
 - things that need to be improved are marked with "# TO DO"
 """
 
@@ -358,11 +358,12 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
 # normalization (such as filtering default values)
 # needs to occur.
 
-def _normalizePlistFile(modTimes, ufoPath, *subpath):
+def _normalizePlistFile(modTimes, ufoPath, *subpath, **kwargs):
     if subpathNeedsRefresh(modTimes, ufoPath, *subpath):
+        preprocessor = kwargs.get("preprocessor")
         data = subpathReadPlist(ufoPath, *subpath)
         if data:
-            text = normalizePropertyList(data)
+            text = normalizePropertyList(data, preprocessor=None)
             subpathWriteFile(text, ufoPath, *subpath)
             modTimes[subpath[-1]] = subpathGetModTime(ufoPath, *subpath)
         # Don't write empty plist files.
@@ -379,8 +380,199 @@ def normalizeMetaInfoPlist(ufoPath, modTimes):
 # fontinfo.plist
 
 def normalizeFontInfoPlist(ufoPath, modTimes):
-    # TO DO: normalize color strings
-    _normalizePlistFile(modTimes, ufoPath, "fontinfo.plist")
+    _normalizePlistFile(modTimes, ufoPath, "fontinfo.plist", preprocessor=_normalizeFontInfoGuidelines)
+
+def _normalizeFontInfoGuidelines(obj):
+    r"""
+    - Follow general guideline normalization rules.
+
+    >>> test = '''
+    ... <plist version="1.0">
+    ...     <dict>
+    ...         <key>guidelines</key>
+    ...         <array>
+    ...             <dict>
+    ...                 <key>x</key><integer>1</integer>
+    ...                 <key>y</key><integer>2</integer>
+    ...                 <key>angle</key><integer>3</integer>
+    ...                 <key>color</key><string>1,0,0,.5</string>
+    ...             </dict>
+    ...             <dict>
+    ...                 <key>x</key><integer>4</integer>
+    ...                 <key>y</key><integer>5</integer>
+    ...                 <key>angle</key><integer>6</integer>
+    ...                 <key>color</key><string>0,1,0,.5</string>
+    ...             </dict>
+    ...             <dict>
+    ...                 <key>x</key><integer>7</integer>
+    ...                 <key>y</key><integer>8</integer>
+    ...                 <key>angle</key><integer>9</integer>
+    ...                 <key>color</key><string>invalid</string>
+    ...             </dict>
+    ...         </array>
+    ...     </dict>
+    ... </plist>
+    ... '''
+    >>> expected = {
+    ...     "guidelines" : [
+    ...         dict(x=1, y=2, angle=3, color="1,0,0,0.5"),
+    ...         dict(x=4, y=5, angle=6, color="0,1,0,0.5"),
+    ...         dict(x=7, y=8, angle=9),
+    ...     ]
+    ... }
+    >>> plist = plistlib.readPlistFromString(test)
+    >>> _normalizeFontInfoGuidelines(plist)
+    >>> plist == expected
+    True
+    """
+    guidelines = obj.get("guidelines")
+    if not guidelines:
+        return
+    normalized = []
+    for guideline in guidelines:
+        guideline = _normalizeDictGuideline(guideline)
+        if guideline is not None:
+            normalized.append(guideline)
+    obj["guidelines"] = normalized
+
+def _normalizeDictGuideline(guideline):
+    """
+    - Don't write if angle is defined but either x or y are not defined.
+    - Don't write if both x and y are defined but angle is not defined.
+
+    everything
+    ----------
+    >>> guideline = dict(x=1, y=2, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = dict(x=1, y=2, angle=3, name="test", color="1,0,0,0.5", identifier="TEST")
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    no x
+    ----
+    >>> guideline = dict(y=2, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = dict(y=2, name="test", color="1,0,0,0.5", identifier="TEST")
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    >>> guideline = dict(y=2, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = None
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    >>> guideline = dict(x="invalid", y=2, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = None
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    no y
+    ----
+    >>> guideline = dict(x=1, y=2, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = dict(x=1, y=2, angle=3, name="test", color="1,0,0,0.5", identifier="TEST")
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    >>> guideline = dict(x=1, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = dict(x=1, name="test", color="1,0,0,0.5", identifier="TEST")
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    >>> guideline = dict(x=1, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = None
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    >>> guideline = dict(x=1, y="invalid", angle=3, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = None
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    no angle
+    --------
+    >>> guideline = dict(x=1, y=2, name="test", color="1,0,0,.5", identifier="TEST")
+    >>> expected = None
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    no name
+    -------
+    >>> guideline = dict(x=1, y=2, angle=3, color="1,0,0,.5", identifier="TEST")
+    >>> expected = dict(x=1, y=2, angle=3, color="1,0,0,0.5", identifier="TEST")
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    no color
+    --------
+    >>> guideline = dict(x=1, y=2, angle=3, name="test", identifier="TEST")
+    >>> expected = dict(x=1, y=2, angle=3, name="test", identifier="TEST")
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+
+    no identifier
+    -------------
+    >>> guideline = dict(x=1, y=2, angle=3, name="test", color="1,0,0,.5")
+    >>> expected = dict(x=1, y=2, angle=3, name="test", color="1,0,0,0.5")
+    >>> result = _normalizeDictGuideline(guideline)
+    >>> result == expected
+    True
+    """
+    x = guideline.get("x")
+    y = guideline.get("y")
+    angle = guideline.get("angle")
+    name = guideline.get("name")
+    color = guideline.get("color")
+    identifier = guideline.get("identifier")
+    # either x or y must be defined
+    if not x and not y:
+        return
+    # if angle is specified, x and y must be specified
+    if (not x or not y) and angle:
+        return
+    # if x and y are specified, angle must be specified
+    if (x and y) and not angle:
+        return
+    # value errors
+    if x:
+        try:
+            x = float(x)
+        except ValueError:
+            return
+    if y:
+        try:
+            y = float(y)
+        except ValueError:
+            return
+    if angle:
+        try:
+            angle = float(angle)
+        except ValueError:
+            return
+    normalized = {}
+    if x is not None:
+        normalized["x"] = x
+    if y is not None:
+        normalized["y"] = y
+    if angle is not None:
+        normalized["angle"] = angle
+    if name is not None:
+        normalized["name"] = name
+    if color is not None:
+        color = _normalizeColorString(color)
+        if color is not None:
+            normalized["color"] = color
+    if identifier is not None:
+        normalized["identifier"] = identifier
+    return normalized
 
 # groups.plist
 
@@ -408,7 +600,9 @@ def normalizeLibPlist(ufoPath):
 
 # Property List
 
-def normalizePropertyList(data):
+def normalizePropertyList(data, preprocessor=None):
+    if preprocessor is not None:
+        preprocessor(data)
     writer = XMLWriter(isPropertyList=True)
     writer.beginElement("plist", attrs=dict(version="1.0"))
     writer.propertyListObject(data)
@@ -698,7 +892,6 @@ def _normalizeGlifImage(element, writer):
 
     everything
     ----------
-
     >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
@@ -707,7 +900,6 @@ def _normalizeGlifImage(element, writer):
 
     empty
     -----
-
     >>> element = ET.fromstring("<image />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
@@ -716,7 +908,6 @@ def _normalizeGlifImage(element, writer):
 
     no file name
     ------------
-
     >>> element = ET.fromstring("<image xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
@@ -725,7 +916,6 @@ def _normalizeGlifImage(element, writer):
 
     no transformation
     -----------------
-
     >>> element = ET.fromstring("<image fileName='Sketch 1.png' color='1,0,0,.5' />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
@@ -734,7 +924,6 @@ def _normalizeGlifImage(element, writer):
 
     no color
     --------
-
     >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
@@ -852,8 +1041,7 @@ def _normalizeGlifAnchor(element, writer):
 
 def _normalizeGlifGuideline(element, writer):
     """
-    - Don't write if angle is defined but either x or y are not defined.
-    - Don't write if both x and y are defined but angle is not defined.
+    - Follow general guideline normalization rules.
 
     everything
     ----------
@@ -863,126 +1051,24 @@ def _normalizeGlifGuideline(element, writer):
     >>> writer.getText()
     u'<guideline name="test" x="1" y="2" angle="3" color="1,0,0,0.5" identifier="TEST"/>'
 
-    no x
-    ----
-    >>> element = ET.fromstring("<guideline y='2' name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u'<guideline name="test" y="2" color="1,0,0,0.5" identifier="TEST"/>'
-
-    >>> element = ET.fromstring("<guideline y='2' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u''
-
-    >>> element = ET.fromstring("<guideline x='invalid' y='2' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u''
-
-    no y
-    ----
-    >>> element = ET.fromstring("<guideline x='1' name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u'<guideline name="test" x="1" color="1,0,0,0.5" identifier="TEST"/>'
-
-    >>> element = ET.fromstring("<guideline x='1' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u''
-
-    >>> element = ET.fromstring("<guideline x='1' y='invalid' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u''
-
-    no angle
-    --------
-    >>> element = ET.fromstring("<guideline x='1' y='2' name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u''
-
-    no name
+    invalid
     -------
-    >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' color='1,0,0,.5' identifier='TEST'/>")
+    >>> element = ET.fromstring("<guideline name='test' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifGuideline(element, writer)
     >>> writer.getText()
-    u'<guideline x="1" y="2" angle="3" color="1,0,0,0.5" identifier="TEST"/>'
-
-    no color
-    --------
-    >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' name='test' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u'<guideline name="test" x="1" y="2" angle="3" identifier="TEST"/>'
-
-    no identifier
-    -------------
-    >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' name='test' color='1,0,0,.5'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u'<guideline name="test" x="1" y="2" angle="3" color="1,0,0,0.5"/>'
+    u''
     """
     # INVALID DATA POSSIBILITY: x, y and angle not defined according to the spec
     # INVALID DATA POSSIBILITY: angle < 0 or > 360
     # INVALID DATA POSSIBILITY: x, y or angle that can't be converted to float
-    x = element.attrib.get("x")
-    y = element.attrib.get("y")
-    angle = element.attrib.get("angle")
-    # either x or y must be defined
-    if not x and not y:
-        return
-    # if angle is specified, x and y must be specified
-    if (not x or not y) and angle:
-        return
-    # if x and y are specified, angle must be specified
-    if (x and y) and not angle:
-        return
-    # value errors
-    if x:
-        try:
-            x = float(x)
-        except ValueError:
-            return
-    if y:
-        try:
-            y = float(y)
-        except ValueError:
-            return
-    if angle:
-        try:
-            angle = float(angle)
-        except ValueError:
-            return
-    attrs = {}
-    if x is not None:
-        attrs["x"] = x
-    if y is not None:
-        attrs["y"] = y
-    if angle is not None:
-        attrs["angle"] = angle
-    name = element.attrib.get("name")
-    if name is not None:
-        attrs["name"] = name
-    color = element.attrib.get("color")
-    if color is not None:
-        attrs["color"] = _normalizeColorString(color)
-    identifier = element.attrib.get("identifier")
-    if identifier is not None:
-        attrs["identifier"] = identifier
-    writer.simpleElement("guideline", attrs=attrs)
+    attrs = "x y angle color name identifier".split(" ")
+    converted = {}
+    for attr in attrs:
+        converted[attr] = element.attrib.get(attr)
+    normalized = _normalizeDictGuideline(converted)
+    if normalized is not None:
+        writer.simpleElement("guideline", attrs=normalized)
 
 def _normalizeGlifLib(element, writer):
     r"""
