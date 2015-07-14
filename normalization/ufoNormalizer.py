@@ -10,7 +10,6 @@ import glob
 from collections import OrderedDict
 
 """
-- normalizeGlyphsDirectory is being called twice!
 - filter out unknown attributes and subelements
 - add command line functionality (may require a file rename)
 - run through the mod times before writing and make sure that
@@ -132,7 +131,6 @@ def normalizeGlyphsDirectoryNames(ufoPath):
     if subpathExists(ufoPath, "layercontents.plist"):
         layerContents = subpathReadPlist(ufoPath, "layercontents.plist")
         for layerName, layerDirectory in layerContents:
-            normalizeGlyphsDirectory(ufoPath, layerDirectory)
             oldLayerMapping[layerName] = layerDirectory
     if not oldLayerMapping:
         return
