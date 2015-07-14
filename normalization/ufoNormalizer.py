@@ -6,8 +6,11 @@ from xml.etree import cElementTree as ET
 import plistlib
 import textwrap
 import datetime
+import glob
+from collections import OrderedDict
 
 """
+- normalizeGlyphsDirectory is being called twice!
 - filter out unknown attributes and subelements
 - add command line functionality (may require a file rename)
 - run through the mod times before writing and make sure that
@@ -17,6 +20,7 @@ import datetime
 
 __version__ = "0a1"
 modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
+imageReferencesLibKey = "org.unifiedfontobject.normalizer.imageReferences"
 
 
 class UFONormalizerError(Exception): pass
@@ -59,11 +63,16 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True):
         if subpathExists(ufoPath, "glyphs"):
             normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes)
     else:
+        availableImages = readImagesDirectory(ufoPath)
+        referencedImages = set()
         normalizeGlyphsDirectoryNames(ufoPath)
         if subpathExists(ufoPath, "layercontents.plist"):
             layerContents = subpathReadPlist(ufoPath, "layercontents.plist")
-            for layerDirectory in layerContents.values():
-                normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=onlyModified)
+            for layerName, layerDirectory in layerContents:
+                layerReferencedImages = normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=onlyModified)
+                referencedImages |= layerReferencedImages
+        imagesToPurge = availableImages - referencedImages
+        purgeImagesDirectory(ufoPath, imagesToPurge)
     # normalize top level files
     normalizeMetaInfoPlist(ufoPath, modTimes)
     if subpathExists(ufoPath, "fontinfo.plist"):
@@ -91,47 +100,47 @@ def normalizeGlyphsDirectoryNames(ufoPath):
 
     non-standard directory names
     -----------------------------
-    >>> oldLayers = {
-    ...     "public.default" : "glyphs",
-    ...     "Sketches" : "glyphs.sketches",
-    ... }
-    >>> expectedLayers = {
-    ...     "public.default" : "glyphs",
-    ...     "Sketches" : "glyphs.S_ketches",
-    ... }
+    >>> oldLayers = [
+    ...     ("public.default", "glyphs"),
+    ...     ("Sketches", "glyphs.sketches"),
+    ... ]
+    >>> expectedLayers = [
+    ...     ("public.default", "glyphs"),
+    ...     ("Sketches", "glyphs.S_ketches"),
+    ... ]
     >>> _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers)
     True
 
     old directory with same name as new directory
     ---------------------------------------------
-    >>> oldLayers = {
-    ...     "public.default" : "glyphs",
-    ...     "one" : "glyphs.two",
-    ...     "two" : "glyphs.three"
-    ... }
-    >>> expectedLayers = {
-    ...     "public.default" : "glyphs",
-    ...     "one" : u"glyphs.one",
-    ...     "two" : u"glyphs.two"
-    ... }
+    >>> oldLayers = [
+    ...     ("public.default", "glyphs"),
+    ...     ("one", "glyphs.two"),
+    ...     ("two", "glyphs.three")
+    ... ]
+    >>> expectedLayers = [
+    ...     ("public.default", "glyphs"),
+    ...     ("one", u"glyphs.one"),
+    ...     ("two", u"glyphs.two")
+    ... ]
     >>> _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers)
     True
     """
     # INVALID DATA POSSIBILITY: directory for layer name may not exist
     # INVALID DATA POSSIBILITY: directory may not be stored in layer contents
-    oldLayerMapping = {}
+    oldLayerMapping = OrderedDict()
     if subpathExists(ufoPath, "layercontents.plist"):
         layerContents = subpathReadPlist(ufoPath, "layercontents.plist")
-        for layerName, layerDirectory in layerContents.items():
+        for layerName, layerDirectory in layerContents:
             normalizeGlyphsDirectory(ufoPath, layerDirectory)
             oldLayerMapping[layerName] = layerDirectory
     if not oldLayerMapping:
         return
     # INVALID DATA POSSIBILITY: no default layer
     # INVALID DATA POSSIBILITY: public.default used for directory other than "glyphs"
-    newLayerMapping = {}
+    newLayerMapping = OrderedDict()
     newLayerDirectories = set()
-    for layerName, oldLayerDirectory in sorted(oldLayerMapping.items()):
+    for layerName, oldLayerDirectory in oldLayerMapping.items():
         if oldLayerDirectory == "glyphs":
             newLayerDirectory = "glyphs"
         else:
@@ -151,20 +160,21 @@ def normalizeGlyphsDirectoryNames(ufoPath):
     for tempDirectory, newLayerDirectory in fromTempMapping.items():
         subpathRenameDirectory(ufoPath, tempDirectory, newLayerDirectory)
     # update layercontents.plist
+    newLayerMapping = list(newLayerMapping.items())
     subpathWritePlist(newLayerMapping, ufoPath, "layercontents.plist")
     return newLayerMapping
 
 def _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers):
     import tempfile
     directory = tempfile.mkdtemp()
-    for subDirectory in oldLayers.values():
+    for layerName, subDirectory in oldLayers:
         os.mkdir(os.path.join(directory, subDirectory))
-    assert sorted(os.listdir(directory)) == sorted(oldLayers.values())
+    assert sorted(os.listdir(directory)) == sorted([oldDirectory for oldName, oldDirectory in oldLayers])
     subpathWritePlist(oldLayers, directory, "layercontents.plist")
     newLayers = normalizeGlyphsDirectoryNames(directory)
     listing = os.listdir(directory)
     listing.remove("layercontents.plist")
-    assert sorted(listing) == sorted(newLayers.values())
+    assert sorted(listing) == sorted([newDirectory for newName, newDirectory in newLayers])
     shutil.rmtree(directory)
     return newLayers == expectedLayers
 
@@ -186,6 +196,14 @@ def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
         layerLib = layerInfo.get("lib", {})
     else:
         layerLib = {}
+    imageReferences = {}
+    if onlyModified:
+        stored = readImageReferences(layerLib)
+        if stored is not None:
+            imageReferences = stored
+        else:
+            # we don't know what has a reference so we must check everything
+            onlyModified = False
     if onlyModified:
         modTimes = readModTimes(layerLib)
     else:
@@ -193,15 +211,22 @@ def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
     glyphMapping = normalizeGlyphNames(ufoPath, layerDirectory)
     for fileName in glyphMapping.values():
         if subpathNeedsRefresh(modTimes, ufoPath, layerDirectory, fileName):
-            normalizeGLIF(ufoPath, layerDirectory, fileName)
-            modTimes[location] = subpathGetModTime(ufoPath, layerDirectory, fileName)
+            imageFileName = normalizeGLIF(ufoPath, layerDirectory, fileName)
+            if imageFileName is not None:
+                imageReferences[fileName] = imageFileName
+            elif fileName in imageReferences:
+                del imageReferences[fileName]
+            modTimes[fileName] = subpathGetModTime(ufoPath, layerDirectory, fileName)
     storeModTimes(layerLib, modTimes)
+    storeImageReferences(layerLib, imageReferences)
     normalizeLayerInfoPlist(ufoPath, layerDirectory)
+    referencedImages = set(imageReferences.values())
+    return referencedImages
 
 def normalizeLayerInfoPlist(ufoPath, layerDirectory):
     # TO DO: normalize colors
     if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
-        _normalizePlistFile(ufoPath, layerDirectory, "layerinfo.plist")
+        _normalizePlistFile({}, ufoPath, *[layerDirectory, "layerinfo.plist"])
 
 def normalizeGlyphNames(ufoPath, layerDirectory):
     """
@@ -398,6 +423,7 @@ def normalizeGLIF(ufoPath, *subpath):
             outline = element
         elif tag == "lib":
             lib = element
+    imageFileName = None
     # write the data
     writer.beginElement("glyph", attrs=dict(name=name, format=glifVersion))
     for uni in unicodes:
@@ -405,6 +431,7 @@ def normalizeGLIF(ufoPath, *subpath):
     if advance is not None:
         _normalizeGlifAdvance(advance, writer)
     if glifVersion >= 2 and image is not None:
+        imageFileName = image.attrib.get("fileName")
         _normalizeGlifImage(image, writer)
     if outline is not None:
         if glifVersion == 1:
@@ -425,6 +452,8 @@ def normalizeGLIF(ufoPath, *subpath):
     # write to the file
     text = writer.getText()
     subpathWriteFile(text, ufoPath, *subpath)
+    # return the image reference
+    return imageFileName
 
 def _normalizeGlifUnicode(element, writer):
     """
@@ -2274,6 +2303,12 @@ def subpathJoin(ufoPath, *subpath):
         subpath = os.path.join(*subpath)
     return os.path.join(ufoPath, subpath)
 
+def subpathSplit(path):
+    """
+    Split path parts.
+    """
+    return os.path.split(path)
+
 def subpathExists(ufoPath, *subpath):
     """
     Get a boolean indicating if a path exists.
@@ -2431,6 +2466,39 @@ def readModTimes(lib):
         modTimes[fileName] = modTime
     return text
 
+# ----------------
+# Image Management
+# ----------------
+
+def readImagesDirectory(ufoPath):
+    """
+    Get a listing of all images in the images directory.
+    """
+    pattern = subpathJoin(ufoPath, *["images", "*.png"])
+    imageNames = [subpathSplit(path)[-1] for path in glob.glob(pattern)]
+    return set(imageNames)
+
+def purgeImagesDirectory(ufoPath, toPurge):
+    """
+    Purge specified images from the images directory.
+    """
+    for fileName in toPurge:
+        if subpathExists(ufoPath, *["images", fileName]):
+            path = subpathJoin(ufoPath, *["images", fileName])
+            os.remove(path)
+
+def storeImageReferences(lib, imageReferences):
+    """
+    Store the image references.
+    """
+    lib[imageReferencesLibKey] = imageReferences
+
+def readImageReferences(lib):
+    """
+    Read the image references.
+    """
+    references = lib.get(imageReferencesLibKey)
+    return references
 
 # ----------------------
 # User Name to File Name
@@ -2640,8 +2708,6 @@ if __name__ == "__main__":
     doctest.testmod()
 
     # test file searching
-    import glob
-
     paths = []
     d = os.path.dirname(__file__)
     pattern = os.path.join(d, "test", "*.ufo")
