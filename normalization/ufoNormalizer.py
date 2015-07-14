@@ -1759,6 +1759,9 @@ def _convertPlistElementToObject(element):
     >>> element = ET.fromstring("<integer>1</integer>")
     >>> _convertPlistElementToObject(element)
     1
+    >>> element = ET.fromstring("<data>YWJj</data>")
+    >>> _convertPlistElementToObject(element)
+    Data('abc')
     """
     # INVALID DATA POSSIBILITY: invalid value string
     obj = None
@@ -1778,9 +1781,7 @@ def _convertPlistElementToObject(element):
     elif tag == "string":
         return element.text
     elif tag == "data":
-        # TO DO: implement this
-        # needs to convert to plistlib.Data
-        raise NotImplementedError
+        return plistlib.Data.fromBase64(element.text)
     elif tag == "date":
         return plistlib._dateFromString(element.text)
     elif tag == "true":
