@@ -2578,7 +2578,7 @@ def subpathNeedsRefresh(modTimes, ufoPath, *subPath):
     previous = modTimes.get(subPath[-1])
     if previous is None:
         return True
-    latest = subpathGetModTime(ufoPath, *subpath)
+    latest = subpathGetModTime(ufoPath, *subPath)
     return latest == previous
 
 # ---------------
@@ -2622,7 +2622,7 @@ def readModTimes(lib):
         modTime, fileName = line.split(" ", 1)
         modTime = float(modTime)
         modTimes[fileName] = modTime
-    return text
+    return modTimes
 
 # ----------------
 # Image Management
