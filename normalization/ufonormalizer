@@ -347,6 +347,8 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
         subpathRenameFile(ufoPath, (layerDirectory, tempFileName), (layerDirectory, newFileName))
     # update contents.plist
     subpathWritePlist(newGlyphMapping, ufoPath, layerDirectory, "contents.plist")
+    # normalize contents.plist
+    _normalizePlistFile({}, ufoPath, layerDirectory, "contents.plist")
     return newGlyphMapping
 
 def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
@@ -381,7 +383,7 @@ def _normalizePlistFile(modTimes, ufoPath, *subpath, **kwargs):
         preprocessor = kwargs.get("preprocessor")
         data = subpathReadPlist(ufoPath, *subpath)
         if data:
-            text = normalizePropertyList(data, preprocessor=None)
+            text = normalizePropertyList(data, preprocessor=preprocessor)
             subpathWriteFile(text, ufoPath, *subpath)
             modTimes[subpath[-1]] = subpathGetModTime(ufoPath, *subpath)
         # Don't write empty plist files.
@@ -1956,7 +1958,7 @@ def _convertPlistElementToObject(element):
 # XML Writer
 
 xmlDeclaration = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-plistDocType = "<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
+plistDocType = "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
 xmlTextMaxLineLength = 70
 xmlIndent = u"\t"
 xmlLineBreak = u"\n"
