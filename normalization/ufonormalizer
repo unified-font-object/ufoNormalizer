@@ -1332,6 +1332,28 @@ def _normalizeGlifContourFormat1(element):
     >>> sorted(_normalizeGlifContourFormat1(element).items())
     [('name', 'anchor1'), ('type', 'anchor'), ('x', 0.0), ('y', 0.0)]
 
+    implied anchor with empty name
+    ------------------------------
+    >>> contour = '''
+    ... <contour>
+    ...    <point type="move" y="0" x="0" name=""/>
+    ... </contour>
+    ... '''
+    >>> element = ET.fromstring(contour)
+    >>> sorted(_normalizeGlifContourFormat1(element).items())
+    [('name', ''), ('type', 'anchor'), ('x', 0.0), ('y', 0.0)]
+
+    implied anchor without name
+    ---------------------------
+    >>> contour = '''
+    ... <contour>
+    ...    <point type="move" y="0" x="0"/>
+    ... </contour>
+    ... '''
+    >>> element = ET.fromstring(contour)
+    >>> sorted(_normalizeGlifContourFormat1(element).items())
+    [('type', 'anchor'), ('x', 0.0), ('y', 0.0)]
+
     normal
     ------
     >>> contour = '''
