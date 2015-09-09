@@ -1425,6 +1425,13 @@ def _normalizeGlifPointAttributesFormat1(element):
     >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
     [('smooth', 'yes'), ('type', 'line'), ('x', 1.0), ('y', 2.5)]
 
+    empty name
+    ----------
+    >>> point = "<point x='1' y='2.5' type='line' name='' smooth='yes'/>"
+    >>> element = ET.fromstring(point)
+    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
+    [('name', ''), ('smooth', 'yes'), ('type', 'line'), ('x', 1.0), ('y', 2.5)]
+
     type and smooth
     ---------------
     >>> point = "<point x='1' y='2.5' type='move' smooth='yes'/>"
