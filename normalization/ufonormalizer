@@ -1844,7 +1844,7 @@ def _normalizeGlifTransformation(element):
     >>> _normalizeGlifTransformation(element)
     {}
 
-    
+
     default
     -------
     >>> element = ET.fromstring("<test xScale='1' xyScale='0' yxScale='0' yScale='1' xOffset='0' yOffset='0' />")
@@ -2298,12 +2298,12 @@ class XMLWriter(object):
 
 def xmlEscapeText(text):
     r"""
-    NOTE: In Python 2.x, the doctest module is not robust enough to deal with non-ASCII 
-          characters; to make the tests work, the doctest string needs to be raw, 
+    NOTE: In Python 2.x, the doctest module is not robust enough to deal with non-ASCII
+          characters; to make the tests work, the doctest string needs to be raw,
           and the results need to be escaped hexadecimal values of each byte.
           In Python 3.x all strings are Unicode-encoded by default, which allows for
           the doctests results to use any Unicode character.
-    
+
     >>> xmlEscapeText(u"&")
     u'&amp;'
     >>> xmlEscapeText(u"<")
