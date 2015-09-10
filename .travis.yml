@@ -1,4 +1,5 @@
 language: python
 python:
   - "2.7"
-script: normalization/ufonormalizer -t
+script:
+  - normalization/ufonormalizer -t | tee /dev/stderr | grep "\*\*\*Test Failed\*\*\*"; if [[ ${PIPESTATUS[2]} == "0" ]]; then exit 1 ; fi
