@@ -1156,34 +1156,34 @@ def _normalizeGlifNote(element, writer):
     >>> element = ET.fromstring("<note>Blah</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    '<note>\n\tBlah\n</note>'
+    >>> writer.getText() == u"<note>\n\tBlah\n</note>"
+    True
 
     >>> element = ET.fromstring("<note>Don't forget to check the béziers!!</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    "<note>\n\tDon't forget to check the b\xe9ziers!!\n</note>"
+    >>> writer.getText() == u"<note>\n\tDon't forget to check the b\xe9ziers!!\n</note>"
+    True
 
     >>> element = ET.fromstring("<note>A quick brown fox jumps over the lazy dog.\nPříliš žluťoučký kůň úpěl ďábelské ódy.</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    '<note>\n\tA quick brown fox jumps over the lazy dog.\n\tP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>'
+    >>> writer.getText() == u"<note>\n\tA quick brown fox jumps over the lazy dog.\n\tP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>"
+    True
 
     undefined
     ---------
     >>> element = ET.fromstring("<note></note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    ''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<note/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    ''
+    >>> writer.getText() == u''
+    True
     """
     value = element.text
     if not value:
@@ -2339,36 +2339,36 @@ def xmlEscapeText(text):
           In Python 3.x all strings are Unicode-encoded by default, which allows for
           the doctests results to use any Unicode character.
 
-    >>> xmlEscapeText("&")
-    '&amp;'
-    >>> xmlEscapeText("<")
-    '&lt;'
-    >>> xmlEscapeText(">")
-    '&gt;'
-    >>> xmlEscapeText("a")
-    'a'
-    >>> xmlEscapeText("ä")
-    'ä'
-    >>> xmlEscapeText("ā")
-    'ā'
-    >>> xmlEscapeText("𐐀")
-    '𐐀'
-    >>> xmlEscapeText("©")
-    '©'
-    >>> xmlEscapeText("—")
-    '—'
-    >>> xmlEscapeText("1")
-    '1'
-    >>> xmlEscapeText("1.0")
-    '1.0'
-    >>> xmlEscapeText("'")
-    "'"
-    >>> xmlEscapeText("/")
-    '/'
-    >>> xmlEscapeText("\\")
-    '\\'
-    >>> xmlEscapeText("\\r")
-    '\\r'
+    >>> xmlEscapeText(u"&") == u"&amp;"
+    True
+    >>> xmlEscapeText(u"<") == u"&lt;"
+    True
+    >>> xmlEscapeText(u">") == u"&gt;"
+    True
+    >>> xmlEscapeText(u"a") == u"a"
+    True
+    >>> xmlEscapeText(u"ä") == u"ä"
+    True
+    >>> xmlEscapeText(u"ā") == u"ā"
+    True
+    >>> xmlEscapeText(u"𐐀") == u"𐐀"
+    True
+    >>> xmlEscapeText(u"©") == u"©"
+    True
+    >>> xmlEscapeText(u"—") == u"—"
+    True
+    >>> xmlEscapeText(u"1") == u"1"
+    True
+    >>> xmlEscapeText(u"1.0") == u"1.0"
+    True
+    >>> xmlEscapeText(u"'") == u"'"
+    True
+    >>> xmlEscapeText(u"/") == u"/"
+    True
+    >>> xmlEscapeText(u"\\") == u"\\"
+    True
+    >>> xmlEscapeText(u"\\r") == u"\\r"
+    True
     """
     text = text.replace("&", "&amp;")
     text = text.replace("<", "&lt;")
