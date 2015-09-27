@@ -11,6 +11,7 @@ import textwrap
 import datetime
 import glob
 from collections import OrderedDict
+from fontTools.misc.py23 import *
 
 """
 - filter out unknown attributes and subelements
@@ -27,6 +28,10 @@ all possible files to a standard XML formatting, data
 structure and file naming scheme.
 """ % __version__
 
+try:
+    long
+except NameError:
+    long = int
 
 def runFromCommandline():
     import argparse
@@ -188,7 +193,7 @@ def normalizeGlyphsDirectoryNames(ufoPath):
         if oldLayerDirectory == "glyphs":
             newLayerDirectory = "glyphs"
         else:
-            newLayerDirectory = userNameToFileName(str(layerName), newLayerDirectories, prefix="glyphs.")
+            newLayerDirectory = userNameToFileName(unicode(layerName), newLayerDirectories, prefix="glyphs.")
         newLayerDirectories.add(newLayerDirectory)
         newLayerMapping[layerName] = newLayerDirectory
     # don't do a direct rename because an old directory
@@ -331,7 +336,7 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
     newGlyphMapping = {}
     newFileNames = set()
     for glyphName in sorted(oldGlyphMapping.keys()):
-        newFileName = userNameToFileName(str(glyphName), newFileNames, suffix=".glif")
+        newFileName = userNameToFileName(unicode(glyphName), newFileNames, suffix=".glif")
         newFileNames.add(newFileName)
         newGlyphMapping[glyphName] = newFileName
     # don't do a direct rewrite in case an old file has
@@ -2244,11 +2249,11 @@ class XMLWriter(object):
             self._plistArray(data)
         elif isinstance(data, dict):
             self._plistDict(data)
-        elif isinstance(data, str):
+        elif isinstance(data, basestring):
             self._plistString(data)
         elif isinstance(data, bool):
             self._plistBoolean(data)
-        elif isinstance(data, int):
+        elif isinstance(data, (int, long)):
             self._plistInt(data)
         elif isinstance(data, float):
             self._plistFloat(data)
@@ -2489,7 +2494,7 @@ def subpathJoin(ufoPath, *subpath):
     """
     Join path parts.
     """
-    if not isinstance(subpath, str):
+    if not isinstance(subpath, basestring):
         subpath = os.path.join(*subpath)
     return os.path.join(ufoPath, subpath)
 
@@ -2564,9 +2569,9 @@ def subpathRenameFile(ufoPath, fromSubpath, toSubpath):
     """
     Rename a file.
     """
-    if isinstance(fromSubpath, str):
+    if isinstance(fromSubpath, basestring):
         fromSubpath = [fromSubpath]
-    if isinstance(toSubpath, str):
+    if isinstance(toSubpath, basestring):
         toSubpath = [toSubpath]
     inPath = subpathJoin(ufoPath, *fromSubpath)
     outPath = subpathJoin(ufoPath, *toSubpath)
@@ -2576,9 +2581,9 @@ def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
     """
     Rename a directory.
     """
-    if isinstance(fromSubpath, str):
+    if isinstance(fromSubpath, basestring):
         fromSubpath = [fromSubpath]
-    if isinstance(toSubpath, str):
+    if isinstance(toSubpath, basestring):
         toSubpath = [toSubpath]
     inPath = subpathJoin(ufoPath, *fromSubpath)
     outPath = subpathJoin(ufoPath, *toSubpath)
@@ -2754,7 +2759,7 @@ def userNameToFileName(userName, existing=[], prefix="", suffix=""):
     'alt._con'
     """
     # the incoming name must be a unicode string
-    assert isinstance(userName, str), "The value for userName must be a unicode string."
+    assert isinstance(userName, unicode), "The value for userName must be a unicode string."
     # establish the prefix and suffix lengths
     prefixLength = len(prefix)
     suffixLength = len(suffix)
