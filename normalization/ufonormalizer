@@ -2217,7 +2217,7 @@ class XMLWriter(object):
         '<integer>0</integer>'
 
         >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(2015-01-01)
+        >>> writer.propertyListObject(2015-1-1)
         >>> writer.getText()
         '<integer>2013</integer>'
 
@@ -2451,27 +2451,27 @@ def xmlConvertInt(value):
     '0'
     >>> xmlConvertInt(-0)
     '0'
-    >>> xmlConvertInt(01)
+    >>> xmlConvertInt(0o01)
     '1'
-    >>> xmlConvertInt(- 01)
+    >>> xmlConvertInt(- 0o01)
     '-1'
-    >>> xmlConvertInt(000001)
+    >>> xmlConvertInt(0o000001)
     '1'
-    >>> xmlConvertInt(0000000000000001)
+    >>> xmlConvertInt(0o0000000000000001)
     '1'
     >>> xmlConvertInt(1000000000000001)
     '1000000000000001'
-    >>> xmlConvertInt(000001000001)
+    >>> xmlConvertInt(0o000001000001)
     '262145'
-    >>> xmlConvertInt(00000100000)
+    >>> xmlConvertInt(0o00000100000)
     '32768'
-    >>> xmlConvertInt(0000010)
+    >>> xmlConvertInt(0o0000010)
     '8'
-    >>> xmlConvertInt(-0000010)
+    >>> xmlConvertInt(-0o0000010)
     '-8'
-    >>> xmlConvertInt(0000020)
+    >>> xmlConvertInt(0o0000020)
     '16'
-    >>> xmlConvertInt(0000030)
+    >>> xmlConvertInt(0o0000030)
     '24'
     >>> xmlConvertInt(65536)
     '65536'
