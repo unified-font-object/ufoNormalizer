@@ -184,7 +184,7 @@ def normalizeGlyphsDirectoryNames(ufoPath):
     # INVALID DATA POSSIBILITY: public.default used for directory other than "glyphs"
     newLayerMapping = OrderedDict()
     newLayerDirectories = set()
-    for layerName, oldLayerDirectory in list(oldLayerMapping.items()):
+    for layerName, oldLayerDirectory in oldLayerMapping.items():
         if oldLayerDirectory == "glyphs":
             newLayerDirectory = "glyphs"
         else:
@@ -201,7 +201,7 @@ def normalizeGlyphsDirectoryNames(ufoPath):
         tempDirectory = "org.unifiedfontobject.normalizer.%d" % index
         subpathRenameDirectory(ufoPath, oldLayerDirectory, tempDirectory)
         fromTempMapping[tempDirectory] = newLayerDirectory
-    for tempDirectory, newLayerDirectory in list(fromTempMapping.items()):
+    for tempDirectory, newLayerDirectory in fromTempMapping.items():
         subpathRenameDirectory(ufoPath, tempDirectory, newLayerDirectory)
     # update layercontents.plist
     newLayerMapping = list(newLayerMapping.items())
@@ -253,7 +253,7 @@ def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
     else:
         modTimes = {}
     glyphMapping = normalizeGlyphNames(ufoPath, layerDirectory)
-    for fileName in list(glyphMapping.values()):
+    for fileName in glyphMapping.values():
         if subpathNeedsRefresh(modTimes, ufoPath, layerDirectory, fileName):
             imageFileName = normalizeGLIF(ufoPath, layerDirectory, fileName)
             if imageFileName is not None:
@@ -344,7 +344,7 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
         tempFileName = "org.unifiedfontobject.normalizer.%d" % index
         subpathRenameFile(ufoPath, (layerDirectory, oldFileName), (layerDirectory, tempFileName))
         fromTempMapping[tempFileName] = newFileName
-    for tempFileName, newFileName in list(fromTempMapping.items()):
+    for tempFileName, newFileName in fromTempMapping.items():
         subpathRenameFile(ufoPath, (layerDirectory, tempFileName), (layerDirectory, newFileName))
     # update contents.plist
     subpathWritePlist(newGlyphMapping, ufoPath, layerDirectory, "contents.plist")
@@ -358,7 +358,7 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
     layerDirectory = "glyphs"
     fullLayerDirectory = subpathJoin(directory, layerDirectory)
     os.mkdir(fullLayerDirectory)
-    for fileName in list(oldGlyphMapping.values()):
+    for fileName in oldGlyphMapping.values():
         subpathWriteFile("", directory, layerDirectory, fileName)
     assert sorted(os.listdir(fullLayerDirectory)) == sorted(oldGlyphMapping.values())
     subpathWritePlist(oldGlyphMapping, directory, layerDirectory, "contents.plist")
@@ -1888,7 +1888,7 @@ def _normalizeGlifTransformation(element):
     [('xOffset', 6.0), ('xScale', 2.0), ('xyScale', 3.0), ('yOffset', 7.0), ('yScale', 5.0), ('yxScale', 4.0)]
     """
     attrs = {}
-    for attr, default in list(_glifDefaultTransformation.items()):
+    for attr, default in _glifDefaultTransformation.items():
         value = element.attrib.get(attr, default)
         try:
             value = float(value)
@@ -2315,7 +2315,7 @@ class XMLWriter(object):
         'x="1" y="2.1" a="blah"'
         """
         sorter = [
-            (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in list(attrs.items())
+            (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in attrs.items()
         ]
         formatted = []
         for index, attr, value in sorted(sorter):
