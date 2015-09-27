@@ -2713,50 +2713,50 @@ def userNameToFileName(userName, existing=[], prefix="", suffix=""):
     existing should be a case-insensitive list
     of all existing file names.
 
-    >>> userNameToFileName("a")
-    'a'
-    >>> userNameToFileName("A")
-    'A_'
-    >>> userNameToFileName("AE")
-    'A_E_'
-    >>> userNameToFileName("Ae")
-    'A_e'
-    >>> userNameToFileName("ae")
-    'ae'
-    >>> userNameToFileName("aE")
-    'aE_'
-    >>> userNameToFileName("a.alt")
-    'a.alt'
-    >>> userNameToFileName("A.alt")
-    'A_.alt'
-    >>> userNameToFileName("A.Alt")
-    'A_.A_lt'
-    >>> userNameToFileName("A.aLt")
-    'A_.aL_t'
-    >>> userNameToFileName("A.alT")
-    'A_.alT_'
-    >>> userNameToFileName("T_H")
-    'T__H_'
-    >>> userNameToFileName("T_h")
-    'T__h'
-    >>> userNameToFileName("t_h")
-    't_h'
-    >>> userNameToFileName("F_F_I")
-    'F__F__I_'
-    >>> userNameToFileName("f_f_i")
-    'f_f_i'
-    >>> userNameToFileName("Aacute_V.swash")
-    'A_acute_V_.swash'
-    >>> userNameToFileName(".notdef")
-    '_notdef'
-    >>> userNameToFileName("con")
-    '_con'
-    >>> userNameToFileName("CON")
-    'C_O_N_'
-    >>> userNameToFileName("con.alt")
-    '_con.alt'
-    >>> userNameToFileName("alt.con")
-    'alt._con'
+    >>> userNameToFileName(u"a") == u"a"
+    True
+    >>> userNameToFileName(u"A") == u"A_"
+    True
+    >>> userNameToFileName(u"AE") == u"A_E_"
+    True
+    >>> userNameToFileName(u"Ae") == u"A_e"
+    True
+    >>> userNameToFileName(u"ae") == u"ae"
+    True
+    >>> userNameToFileName(u"aE") == u"aE_"
+    True
+    >>> userNameToFileName(u"a.alt") == u"a.alt"
+    True
+    >>> userNameToFileName(u"A.alt") == u"A_.alt"
+    True
+    >>> userNameToFileName(u"A.Alt") == u"A_.A_lt"
+    True
+    >>> userNameToFileName(u"A.aLt") == u"A_.aL_t"
+    True
+    >>> userNameToFileName(u"A.alT") == u"A_.alT_"
+    True
+    >>> userNameToFileName(u"T_H") == u"T__H_"
+    True
+    >>> userNameToFileName(u"T_h") == u"T__h"
+    True
+    >>> userNameToFileName(u"t_h") == u"t_h"
+    True
+    >>> userNameToFileName(u"F_F_I") == u"F__F__I_"
+    True
+    >>> userNameToFileName(u"f_f_i") == u"f_f_i"
+    True
+    >>> userNameToFileName(u"Aacute_V.swash") == u"A_acute_V_.swash"
+    True
+    >>> userNameToFileName(u".notdef") == u"_notdef"
+    True
+    >>> userNameToFileName(u"con") == u"_con"
+    True
+    >>> userNameToFileName(u"CON") == u"C_O_N_"
+    True
+    >>> userNameToFileName(u"con.alt") == u"_con.alt"
+    True
+    >>> userNameToFileName(u"alt.con") == u"alt._con"
+    True
     """
     # the incoming name must be a unicode string
     assert isinstance(userName, unicode), "The value for userName must be a unicode string."
