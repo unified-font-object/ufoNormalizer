@@ -1975,6 +1975,24 @@ def _normalizeColorString(value):
     color = (xmlConvertFloat(i) for i in (r, g, b, a))
     return ",".join(color)
 
+# Adapted from plistlib.datetime._date_from_string()
+def _dateFromString(text):
+    import re
+    _dateParser = re.compile(r"(?P<year>\d\d\d\d)(?:-(?P<month>\d\d)(?:-(?P<day>\d\d)(?:T(?P<hour>\d\d)(?::(?P<minute>\d\d)(?::(?P<second>\d\d))?)?)?)?)?Z")
+    gd = _dateParser.match(text).groupdict()
+    lst = []
+    for key in ('year', 'month', 'day', 'hour', 'minute', 'second'):
+        val = gd[key]
+        if val is None:
+            break
+        lst.append(int(val))
+    return datetime.datetime(*lst)
+
+def _dateToString(data):
+    return '%04d-%02d-%02dT%02d:%02d:%02dZ' % (data.year, data.month,
+                                               data.day, data.hour,
+                                               data.minute, data.second)
+
 def _convertPlistElementToObject(element):
     """
     >>> element = ET.fromstring("<array></array>")
@@ -2028,10 +2046,7 @@ def _convertPlistElementToObject(element):
     elif tag == "data":
         return plistlib.Data.fromBase64(element.text)
     elif tag == "date":
-        try:
-            return plistlib._dateFromString(element.text)
-        except AttributeError:
-            return plistlib._date_from_string(element.text)
+        return _dateFromString(element.text)
     elif tag == "true":
         return True
     elif tag == "false":
@@ -2347,10 +2362,7 @@ class XMLWriter(object):
         self.simpleElement("integer", value=data)
 
     def _plistDate(self, data):
-        try:
-            data = plistlib._dateToString(data)
-        except AttributeError:
-            data = plistlib._date_to_string(data)
+        data = _dateToString(data)
         self.simpleElement("date", value=data)
 
     def _plistData(self, data):
