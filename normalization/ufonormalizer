@@ -28,11 +28,6 @@ all possible files to a standard XML formatting, data
 structure and file naming scheme.
 """ % __version__
 
-try:
-    long
-except NameError:
-    long = int
-
 def runFromCommandline():
     import argparse
     parser = argparse.ArgumentParser(description=description)
@@ -72,6 +67,29 @@ def runFromCommandline():
 modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
 imageReferencesLibKey = "org.unifiedfontobject.normalizer.imageReferences"
 
+# Differences between Python 2 and Python 3
+try:
+    # Python 3 does not have long
+    long
+except NameError:
+    long = int
+
+try:
+    # Pyhton2 does not have plistlib.readPlistFromBytes it has
+    # plistlib.readPlistFromString instead.
+    plistlib.readPlistFromBytes
+
+    def _readPlistFromBytes(data):
+        return plistlib.readPlistFromBytes(tobytes(data))
+
+    def _writePlistToBytes(plist):
+        return plistlib.writePlistToBytes(plist)
+except AttributeError:
+    def _readPlistFromBytes(data):
+        return plistlib.readPlistFromString(data)
+
+    def _writePlistToBytes(plist):
+        return plistlib.writePlistToString(plist)
 
 class UFONormalizerError(Exception): pass
 
@@ -412,8 +430,7 @@ def _normalizeFontInfoGuidelines(obj):
     r"""
     - Follow general guideline normalization rules.
 
-    >>> test = '''
-    ... <plist version="1.0">
+    >>> test = '''<plist version="1.0">
     ...     <dict>
     ...         <key>guidelines</key>
     ...         <array>
@@ -446,7 +463,7 @@ def _normalizeFontInfoGuidelines(obj):
     ...         dict(x=7, y=8, angle=9),
     ...     ]
     ... }
-    >>> plist = plistlib.readPlistFromString(test)
+    >>> plist = _readPlistFromBytes(test)
     >>> _normalizeFontInfoGuidelines(plist)
     >>> plist == expected
     True
@@ -2535,7 +2552,7 @@ def subpathReadPlist(ufoPath, *subpath):
     and convert it into a Python object.
     """
     text = subpathReadFile(ufoPath, *subpath)
-    return plistlib.readPlistFromString(text)
+    return _readPlistFromBytes(text)
 
 # write
 
@@ -2554,7 +2571,7 @@ def subpathWriteFile(data, ufoPath, *subpath):
         existing = None
     if data != existing:
         f = open(path, "wb")
-        f.write(data)
+        f.write(tobytes(data))
         f.close()
 
 def subpathWritePlist(data, ufoPath, *subpath):
@@ -2566,7 +2583,7 @@ def subpathWritePlist(data, ufoPath, *subpath):
     file contains data that is different
     from the new data.
     """
-    data = plistlib.writePlistToString(data)
+    data = _writePlistToBytes(data)
     subpathWriteFile(data, ufoPath, *subpath)
 
 # rename
