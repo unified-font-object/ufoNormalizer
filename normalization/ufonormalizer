@@ -1979,7 +1979,10 @@ def _convertPlistElementToObject(element):
     elif tag == "data":
         return plistlib.Data.fromBase64(element.text)
     elif tag == "date":
-        return plistlib._dateFromString(element.text)
+        try:
+            return plistlib._dateFromString(element.text)
+        except AttributeError:
+            return plistlib._date_from_string(element.text)
     elif tag == "true":
         return True
     elif tag == "false":
@@ -2295,7 +2298,10 @@ class XMLWriter(object):
         self.simpleElement("integer", value=data)
 
     def _plistDate(self, data):
-        data = plistlib._dateToString(data)
+        try:
+            data = plistlib._dateToString(data)
+        except AttributeError:
+            data = plistlib._date_to_string(data)
         self.simpleElement("date", value=data)
 
     def _plistData(self, data):
