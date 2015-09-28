@@ -11,7 +11,6 @@ import textwrap
 import datetime
 import glob
 from collections import OrderedDict
-from fontTools.misc.py23 import *
 
 """
 - filter out unknown attributes and subelements
@@ -68,15 +67,26 @@ modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
 imageReferencesLibKey = "org.unifiedfontobject.normalizer.imageReferences"
 
 # Differences between Python 2 and Python 3
+# Python 3 does not have long, basestring, unicode
 try:
-    # Python 3 does not have long
+
     long
 except NameError:
     long = int
 
 try:
-    # Pyhton2 does not have plistlib.readPlistFromBytes it has
-    # plistlib.readPlistFromString instead.
+    basestring
+except NameError:
+    basestring = str
+
+try:
+    unicode
+except NameError:
+    unicode = str
+
+# Python2 does not have plistlib.readPlistFromBytes it has
+# plistlib.readPlistFromString instead.
+try:
     plistlib.readPlistFromBytes
 
     def _readPlistFromBytes(data):
@@ -90,6 +100,28 @@ except AttributeError:
 
     def _writePlistToBytes(plist):
         return plistlib.writePlistToString(plist)
+
+
+# from fontTools.misc.py23
+def tobytes(s, encoding='ascii', errors='strict'):
+    '''no docstring'''
+    if not isinstance(s, bytes):
+        return s.encode(encoding, errors)
+    else:
+        return s
+
+
+def tounicode(s, encoding='ascii', errors='strict'):
+    if not isinstance(s, unicode):
+        return s.decode(encoding, errors)
+    else:
+        return s
+
+if str == bytes:
+    tostr = tobytes
+else:
+    tostr = tounicode
+
 
 class UFONormalizerError(Exception): pass
 
