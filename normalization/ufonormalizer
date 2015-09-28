@@ -1956,8 +1956,8 @@ def _convertPlistElementToObject(element):
     >>> _convertPlistElementToObject(element)
     1
     >>> element = ET.fromstring("<data>YWJj</data>")
-    >>> _convertPlistElementToObject(element)
-    Data('abc')
+    >>> _convertPlistElementToObject(element) == plistlib.Data(b'abc')
+    True
     """
     # INVALID DATA POSSIBILITY: invalid value string
     obj = None
@@ -2238,7 +2238,7 @@ class XMLWriter(object):
         Data
         ----
         >>> writer = XMLWriter(declaration=None)
-        >>> data = plistlib.Data("abc")
+        >>> data = plistlib.Data(tobytes("abc"))
         >>> writer.propertyListObject(data)
         >>> writer.getText()
         '<data>\\n\\tYWJj\\n</data>'
