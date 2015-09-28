@@ -2307,7 +2307,7 @@ class XMLWriter(object):
     def _plistData(self, data):
         self.beginElement("data")
         data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
-        for line in data.splitlines():
+        for line in tostr(data).splitlines():
             self.raw(line)
         self.endElement("data")
 
