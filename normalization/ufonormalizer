@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 import time
 import os
@@ -26,7 +27,6 @@ all possible files to a standard XML formatting, data
 structure and file naming scheme.
 """ % __version__
 
-
 def runFromCommandline():
     import argparse
     parser = argparse.ArgumentParser(description=description)
@@ -42,22 +42,22 @@ def runFromCommandline():
     outputPath = args.output
     onlyModified = not args.all
     if inputPath is None:
-        print "No input path was specified."
+        print("No input path was specified.")
         return
     if not os.path.exists(inputPath):
-        print "Input path does not exist:", inputPath
+        print("Input path does not exist:", inputPath)
         return
     if os.path.splitext(inputPath)[-1].lower() != ".ufo":
-        print "Input path is not a UFO:", inputPath
+        print("Input path is not a UFO:", inputPath)
         return
-    message = u"Normalizing \"%s\"." % os.path.basename(inputPath)
+    message = "Normalizing \"%s\"." % os.path.basename(inputPath)
     if not onlyModified:
         message += " Processing all files."
-    print message
+    print(message)
     start = time.time()
     normalizeUFO(inputPath, outputPath=outputPath, onlyModified=onlyModified)
     runtime = time.time() - start
-    print "Normalization complete (%.4f seconds)." % runtime
+    print("Normalization complete (%.4f seconds)." % runtime)
 
 # ---------
 # Internals
@@ -65,6 +65,62 @@ def runFromCommandline():
 
 modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
 imageReferencesLibKey = "org.unifiedfontobject.normalizer.imageReferences"
+
+# Differences between Python 2 and Python 3
+# Python 3 does not have long, basestring, unicode
+try:
+
+    long
+except NameError:
+    long = int
+
+try:
+    basestring
+except NameError:
+    basestring = str
+
+try:
+    unicode
+except NameError:
+    unicode = str
+
+# Python2 does not have plistlib.readPlistFromBytes it has
+# plistlib.readPlistFromString instead.
+try:
+    plistlib.readPlistFromBytes
+
+    def _readPlistFromBytes(data):
+        return plistlib.readPlistFromBytes(tobytes(data))
+
+    def _writePlistToBytes(plist):
+        return plistlib.writePlistToBytes(plist)
+except AttributeError:
+    def _readPlistFromBytes(data):
+        return plistlib.readPlistFromString(data)
+
+    def _writePlistToBytes(plist):
+        return plistlib.writePlistToString(plist)
+
+
+# from fontTools.misc.py23
+def tobytes(s, encoding='ascii', errors='strict'):
+    '''no docstring'''
+    if not isinstance(s, bytes):
+        return s.encode(encoding, errors)
+    else:
+        return s
+
+
+def tounicode(s, encoding='ascii', errors='strict'):
+    if not isinstance(s, unicode):
+        return s.decode(encoding, errors)
+    else:
+        return s
+
+if str == bytes:
+    tostr = tobytes
+else:
+    tostr = tounicode
 
 
 class UFONormalizerError(Exception): pass
@@ -80,18 +136,18 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True):
         ufoPath = outputPath
     # get the UFO format version
     if not subpathExists(ufoPath, "metainfo.plist"):
-        raise UFONormalizerError(u"Required metainfo.plist file not in %s." % ufoPath)
+        raise UFONormalizerError("Required metainfo.plist file not in %s." % ufoPath)
     metaInfo = subpathReadPlist(ufoPath, "metainfo.plist")
     formatVersion = metaInfo.get("formatVersion")
     if formatVersion is None:
-        raise UFONormalizerError(u"Required formatVersion value not defined in in metainfo.plist in %s." % ufoPath)
+        raise UFONormalizerError("Required formatVersion value not defined in in metainfo.plist in %s." % ufoPath)
     try:
         fV = int(formatVersion)
         formatVersion = fV
     except ValueError:
-        raise UFONormalizerError(u"Required formatVersion value not properly formatted in metainfo.plist in %s." % ufoPath)
+        raise UFONormalizerError("Required formatVersion value not properly formatted in metainfo.plist in %s." % ufoPath)
     if formatVersion > 3:
-        raise UFONormalizerError(u"Unsupported UFO format (%d) in %s." % (formatVersion, ufoPath))
+        raise UFONormalizerError("Unsupported UFO format (%d) in %s." % (formatVersion, ufoPath))
     # load the font lib
     if not subpathExists(ufoPath, "lib.plist"):
         fontLib = {}
@@ -164,8 +220,8 @@ def normalizeGlyphsDirectoryNames(ufoPath):
     ... ]
     >>> expectedLayers = [
     ...     ("public.default", "glyphs"),
-    ...     ("one", u"glyphs.one"),
-    ...     ("two", u"glyphs.two")
+    ...     ("one", "glyphs.one"),
+    ...     ("two", "glyphs.two")
     ... ]
     >>> _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers)
     True
@@ -406,8 +462,7 @@ def _normalizeFontInfoGuidelines(obj):
     r"""
     - Follow general guideline normalization rules.
 
-    >>> test = '''
-    ... <plist version="1.0">
+    >>> test = '''<plist version="1.0">
     ...     <dict>
     ...         <key>guidelines</key>
     ...         <array>
@@ -440,7 +495,7 @@ def _normalizeFontInfoGuidelines(obj):
     ...         dict(x=7, y=8, angle=9),
     ...     ]
     ... }
-    >>> plist = plistlib.readPlistFromString(test)
+    >>> plist = _readPlistFromBytes(test)
     >>> _normalizeFontInfoGuidelines(plist)
     >>> plist == expected
     True
@@ -651,7 +706,7 @@ def normalizeGLIF(ufoPath, *subpath):
     tree = ET.fromstring(text)
     glifVersion = tree.attrib.get("format")
     if glifVersion is None:
-        raise UFONormalizerError(u"Undefined GLIF format: %s" % glifPath)
+        raise UFONormalizerError("Undefined GLIF format: %s" % glifPath)
     glifVersion = int(glifVersion)
     name = tree.attrib.get("name")
     # start the writer
@@ -733,70 +788,70 @@ def _normalizeGlifUnicode(element, writer):
     >>> element = ET.fromstring("<unicode />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<unicode hex=''/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<unicode hexagon=''/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<unicode hex='xyz'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     with hex
     --------
     >>> element = ET.fromstring("<unicode hex='0041'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u'<unicode hex="0041"/>'
+    >>> writer.getText() == u'<unicode hex="0041"/>'
+    True
 
     >>> element = ET.fromstring("<unicode hex='41'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u'<unicode hex="0041"/>'
+    >>> writer.getText() == u'<unicode hex="0041"/>'
+    True
 
     >>> element = ET.fromstring("<unicode hex='ea'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u'<unicode hex="00EA"/>'
+    >>> writer.getText() == u'<unicode hex="00EA"/>'
+    True
 
     >>> element = ET.fromstring("<unicode hex='2Af'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u'<unicode hex="02AF"/>'
+    >>> writer.getText() == u'<unicode hex="02AF"/>'
+    True
 
     >>> element = ET.fromstring("<unicode hex='0000fFfF'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u'<unicode hex="FFFF"/>'
+    >>> writer.getText() == u'<unicode hex="FFFF"/>'
+    True
 
     >>> element = ET.fromstring("<unicode hex='10000'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u'<unicode hex="10000"/>'
+    >>> writer.getText() == u'<unicode hex="10000"/>'
+    True
 
     >>> element = ET.fromstring("<unicode hex='abcde'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText()
-    u'<unicode hex="ABCDE"/>'
+    >>> writer.getText() == u'<unicode hex="ABCDE"/>'
+    True
     """
     v = element.attrib.get("hex")
     # INVALID DATA POSSIBILITY: no hex value
@@ -822,80 +877,80 @@ def _normalizeGlifAdvance(element, writer):
     >>> element = ET.fromstring("<advance />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     defaults
     --------
     >>> element = ET.fromstring("<advance width='0'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<advance height='0'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<advance width='0' height='0'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<advance width='1' height='0'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u'<advance width="1"/>'
+    >>> writer.getText() == u'<advance width="1"/>'
+    True
 
     >>> element = ET.fromstring('<advance width="0" height="1"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u'<advance height="1"/>'
+    >>> writer.getText() == u'<advance height="1"/>'
+    True
 
     width
     -----
     >>> element = ET.fromstring('<advance width="325.0"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u'<advance width="325"/>'
+    >>> writer.getText() == u'<advance width="325"/>'
+    True
 
     >>> element = ET.fromstring('<advance width="325.1"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u'<advance width="325.1"/>'
+    >>> writer.getText() == u'<advance width="325.1"/>'
+    True
 
     >>> element = ET.fromstring('<advance width="-325.0"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u'<advance width="-325"/>'
+    >>> writer.getText() == u'<advance width="-325"/>'
+    True
 
     height
     ------
     >>> element = ET.fromstring('<advance height="325.0"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u'<advance height="325"/>'
+    >>> writer.getText() == u'<advance height="325"/>'
+    True
 
     >>> element = ET.fromstring('<advance height="325.1"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u'<advance height="325.1"/>'
+    >>> writer.getText() == u'<advance height="325.1"/>'
+    True
 
     >>> element = ET.fromstring('<advance height="-325.0"/>')
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText()
-    u'<advance height="-325"/>'
+    >>> writer.getText() == u'<advance height="-325"/>'
+    True
     """
     # INVALID DATA POSSIBILITY: value that can't be converted to float
     w = element.attrib.get("width", "0")
@@ -924,40 +979,40 @@ def _normalizeGlifImage(element, writer):
     >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText()
-    u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200" color="1,0,0,0.5"/>'
+    >>> writer.getText() == u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200" color="1,0,0,0.5"/>'
+    True
 
     empty
     -----
     >>> element = ET.fromstring("<image />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     no file name
     ------------
     >>> element = ET.fromstring("<image xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     no transformation
     -----------------
     >>> element = ET.fromstring("<image fileName='Sketch 1.png' color='1,0,0,.5' />")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText()
-    u'<image fileName="Sketch 1.png" color="1,0,0,0.5"/>'
+    >>> writer.getText() == u'<image fileName="Sketch 1.png" color="1,0,0,0.5"/>'
+    True
 
     no color
     --------
     >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText()
-    u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200"/>'
+    >>> writer.getText() == u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200"/>'
+    True
     """
     # INVALID DATA POSSIBILITY: no file name defined
     # INVALID DATA POSSIBILITY: non-existent file referenced
@@ -983,60 +1038,60 @@ def _normalizeGlifAnchor(element, writer):
     >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u'<anchor name="test" x="230" y="4.5" color="1,0,0,0.5" identifier="TEST"/>'
+    >>> writer.getText() == u'<anchor name="test" x="230" y="4.5" color="1,0,0,0.5" identifier="TEST"/>'
+    True
 
     no name
     -------
     >>> element = ET.fromstring("<anchor x='230' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u'<anchor x="230" y="4.5" color="1,0,0,0.5" identifier="TEST"/>'
+    >>> writer.getText() == u'<anchor x="230" y="4.5" color="1,0,0,0.5" identifier="TEST"/>'
+    True
 
     no x
     ----
     >>> element = ET.fromstring("<anchor name='test' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<anchor name='test' x='invalid' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     no y
     ----
     >>> element = ET.fromstring("<anchor name='test' x='230' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<anchor name='test' x='230' y='invalid' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     no color
     --------
     >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u'<anchor name="test" x="230" y="4.5" identifier="TEST"/>'
+    >>> writer.getText() == u'<anchor name="test" x="230" y="4.5" identifier="TEST"/>'
+    True
 
     no identifier
     -------------
     >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' color='1,0,0,.5'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText()
-    u'<anchor name="test" x="230" y="4.5" color="1,0,0,0.5"/>'
+    >>> writer.getText() == u'<anchor name="test" x="230" y="4.5" color="1,0,0,0.5"/>'
+    True
 
     """
     # INVALID DATA POSSIBILITY: no x defined
@@ -1077,16 +1132,16 @@ def _normalizeGlifGuideline(element, writer):
     >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u'<guideline name="test" x="1" y="2" angle="3" color="1,0,0,0.5" identifier="TEST"/>'
+    >>> writer.getText() == u'<guideline name="test" x="1" y="2" angle="3" color="1,0,0,0.5" identifier="TEST"/>'
+    True
 
     invalid
     -------
     >>> element = ET.fromstring("<guideline name='test' color='1,0,0,.5' identifier='TEST'/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
     """
     # INVALID DATA POSSIBILITY: x, y and angle not defined according to the spec
     # INVALID DATA POSSIBILITY: angle < 0 or > 360
@@ -1116,22 +1171,22 @@ def _normalizeGlifLib(element, writer):
     >>> element = ET.fromstring(e)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifLib(element, writer)
-    >>> writer.getText()
-    u'<lib>\n\t<dict>\n\t\t<key>foo</key>\n\t\t<string>bar</string>\n\t</dict>\n</lib>'
+    >>> writer.getText() == u'<lib>\n\t<dict>\n\t\t<key>foo</key>\n\t\t<string>bar</string>\n\t</dict>\n</lib>'
+    True
 
     undefined
     ---------
     >>> element = ET.fromstring("<lib></lib>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifLib(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<lib><dict></dict></lib>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifLib(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
     """
     if not len(element):
         return
@@ -1150,34 +1205,34 @@ def _normalizeGlifNote(element, writer):
     >>> element = ET.fromstring("<note>Blah</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    u'<note>\n\tBlah\n</note>'
+    >>> writer.getText() == u"<note>\n\tBlah\n</note>"
+    True
 
     >>> element = ET.fromstring("<note>Don't forget to check the béziers!!</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    u"<note>\n\tDon't forget to check the b\xe9ziers!!\n</note>"
+    >>> writer.getText() == u"<note>\n\tDon't forget to check the b\xe9ziers!!\n</note>"
+    True
 
     >>> element = ET.fromstring("<note>A quick brown fox jumps over the lazy dog.\nPříliš žluťoučký kůň úpěl ďábelské ódy.</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    u'<note>\n\tA quick brown fox jumps over the lazy dog.\n\tP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>'
+    >>> writer.getText() == u"<note>\n\tA quick brown fox jumps over the lazy dog.\n\tP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>"
+    True
 
     undefined
     ---------
     >>> element = ET.fromstring("<note></note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> element = ET.fromstring("<note/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
     """
     value = element.text
     if not value:
@@ -1203,8 +1258,8 @@ def _normalizeGlifOutlineFormat1(element, writer):
     >>> element = ET.fromstring(outline)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> outline = '''
     ... <outline>
@@ -1215,8 +1270,8 @@ def _normalizeGlifOutlineFormat1(element, writer):
     >>> element = ET.fromstring(outline)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == ''
+    True
 
     element order
     -------------
@@ -1238,7 +1293,7 @@ def _normalizeGlifOutlineFormat1(element, writer):
     ...     </contour>
     ... </outline>
     ... '''
-    >>> expected = u'''
+    >>> expected = '''
     ... <outline>
     ...     <contour>
     ...         <point x="1" y="1" type="line"/>
@@ -1663,8 +1718,8 @@ def _normalizeGlifOutlineFormat2(element, writer):
     >>> element = ET.fromstring(outline)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifOutlineFormat2(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     >>> outline = '''
     ... <outline>
@@ -1675,8 +1730,8 @@ def _normalizeGlifOutlineFormat2(element, writer):
     >>> element = ET.fromstring(outline)
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifOutlineFormat2(element, writer)
-    >>> writer.getText()
-    u''
+    >>> writer.getText() == u''
+    True
 
     element order
     -------------
@@ -1692,7 +1747,7 @@ def _normalizeGlifOutlineFormat2(element, writer):
     ...     <component base="4"/>
     ... </outline>
     ... '''
-    >>> expected = u'''
+    >>> expected = '''
     ... <outline>
     ...     <contour>
     ...         <point x="1" y="1" type="line"/>
@@ -1920,6 +1975,24 @@ def _normalizeColorString(value):
     color = (xmlConvertFloat(i) for i in (r, g, b, a))
     return ",".join(color)
 
+# Adapted from plistlib.datetime._date_from_string()
+def _dateFromString(text):
+    import re
+    _dateParser = re.compile(r"(?P<year>\d\d\d\d)(?:-(?P<month>\d\d)(?:-(?P<day>\d\d)(?:T(?P<hour>\d\d)(?::(?P<minute>\d\d)(?::(?P<second>\d\d))?)?)?)?)?Z")
+    gd = _dateParser.match(text).groupdict()
+    lst = []
+    for key in ('year', 'month', 'day', 'hour', 'minute', 'second'):
+        val = gd[key]
+        if val is None:
+            break
+        lst.append(int(val))
+    return datetime.datetime(*lst)
+
+def _dateToString(data):
+    return '%04d-%02d-%02dT%02d:%02d:%02dZ' % (data.year, data.month,
+                                               data.day, data.hour,
+                                               data.minute, data.second)
+
 def _convertPlistElementToObject(element):
     """
     >>> element = ET.fromstring("<array></array>")
@@ -1950,8 +2023,8 @@ def _convertPlistElementToObject(element):
     >>> _convertPlistElementToObject(element)
     1
     >>> element = ET.fromstring("<data>YWJj</data>")
-    >>> _convertPlistElementToObject(element)
-    Data('abc')
+    >>> _convertPlistElementToObject(element) == plistlib.Data(b'abc')
+    True
     """
     # INVALID DATA POSSIBILITY: invalid value string
     obj = None
@@ -1973,7 +2046,7 @@ def _convertPlistElementToObject(element):
     elif tag == "data":
         return plistlib.Data.fromBase64(element.text)
     elif tag == "date":
-        return plistlib._dateFromString(element.text)
+        return _dateFromString(element.text)
     elif tag == "true":
         return True
     elif tag == "false":
@@ -1986,12 +2059,12 @@ def _convertPlistElementToObject(element):
 
 # XML Writer
 
-xmlDeclaration = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+xmlDeclaration = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 plistDocType = "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
 xmlTextMaxLineLength = 70
-xmlIndent = u"\t"
-xmlLineBreak = u"\n"
-xmlAttributeOrder = u"""
+xmlIndent = "\t"
+xmlLineBreak = "\n"
+xmlAttributeOrder = """
 name
 base
 format
@@ -2102,140 +2175,140 @@ class XMLWriter(object):
         -----
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject([])
-        >>> writer.getText()
-        u'<array>\\n</array>'
+        >>> writer.getText() == u'<array>\\n</array>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(["a"])
-        >>> writer.getText()
-        u'<array>\\n\\t<string>a</string>\\n</array>'
+        >>> writer.getText() == u'<array>\\n\\t<string>a</string>\\n</array>'
+        True
 
         Dict
         ----
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject({})
-        >>> writer.getText()
-        u'<dict>\\n</dict>'
+        >>> writer.getText() == u'<dict>\\n</dict>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject({"a" : "b"})
-        >>> writer.getText()
-        u'<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>'
+        >>> writer.getText() == u'<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject({"a" : 20.0})
-        >>> writer.getText()
-        u'<dict>\\n\\t<key>a</key>\\n\\t<real>20</real>\\n</dict>'
+        >>> writer.getText() == u'<dict>\\n\\t<key>a</key>\\n\\t<real>20</real>\\n</dict>'
+        True
 
         String
         ------
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject("a")
-        >>> writer.getText()
-        u'<string>a</string>'
+        >>> writer.getText() == u'<string>a</string>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject("1.000")
-        >>> writer.getText()
-        u'<string>1.000</string>'
+        >>> writer.getText() == u'<string>1.000</string>'
+        True
 
         Boolean
         -------
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(True)
-        >>> writer.getText()
-        u'<true/>'
+        >>> writer.getText() == u'<true/>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(False)
-        >>> writer.getText()
-        u'<false/>'
+        >>> writer.getText() == u'<false/>'
+        True
 
         Float
         -----
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(1.1)
-        >>> writer.getText()
-        u'<real>1.1</real>'
+        >>> writer.getText() == u'<real>1.1</real>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(-1.1)
-        >>> writer.getText()
-        u'<real>-1.1</real>'
+        >>> writer.getText() == u'<real>-1.1</real>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(1.0)
-        >>> writer.getText()
-        u'<real>1</real>'
+        >>> writer.getText() == u'<real>1</real>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(-1.0)
-        >>> writer.getText()
-        u'<real>-1</real>'
+        >>> writer.getText() == u'<real>-1</real>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(0.0)
-        >>> writer.getText()
-        u'<real>0</real>'
+        >>> writer.getText() == u'<real>0</real>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(-0.0)
-        >>> writer.getText()
-        u'<real>0</real>'
+        >>> writer.getText() == u'<real>0</real>'
+        True
 
         Integer
         -------
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(1)
-        >>> writer.getText()
-        u'<integer>1</integer>'
+        >>> writer.getText() == u'<integer>1</integer>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(-1)
-        >>> writer.getText()
-        u'<integer>-1</integer>'
+        >>> writer.getText() == u'<integer>-1</integer>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(+1)
-        >>> writer.getText()
-        u'<integer>1</integer>'
+        >>> writer.getText() == u'<integer>1</integer>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(0)
-        >>> writer.getText()
-        u'<integer>0</integer>'
+        >>> writer.getText() == u'<integer>0</integer>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(-0)
-        >>> writer.getText()
-        u'<integer>0</integer>'
+        >>> writer.getText() == u'<integer>0</integer>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(2015-01-01)
-        >>> writer.getText()
-        u'<integer>2013</integer>'
+        >>> writer.propertyListObject(2015-1-1)
+        >>> writer.getText() == u'<integer>2013</integer>'
+        True
 
         Date
         ----
         >>> writer = XMLWriter(declaration=None)
         >>> date = datetime.datetime(2012, 9, 1)
         >>> writer.propertyListObject(date)
-        >>> writer.getText()
-        u'<date>2012-09-01T00:00:00Z</date>'
+        >>> writer.getText() == u'<date>2012-09-01T00:00:00Z</date>'
+        True
 
         >>> writer = XMLWriter(declaration=None)
         >>> date = datetime.datetime(2009, 11, 29, 16, 31, 53)
         >>> writer.propertyListObject(date)
-        >>> writer.getText()
-        u'<date>2009-11-29T16:31:53Z</date>'
+        >>> writer.getText() == u'<date>2009-11-29T16:31:53Z</date>'
+        True
 
         Data
         ----
         >>> writer = XMLWriter(declaration=None)
-        >>> data = plistlib.Data("abc")
+        >>> data = plistlib.Data(tobytes("abc"))
         >>> writer.propertyListObject(data)
-        >>> writer.getText()
-        u'<data>\\n\\tYWJj\\n</data>'
+        >>> writer.getText() == u'<data>\\n\\tYWJj\\n</data>'
+        True
         """
         if data is None:
             return
@@ -2289,13 +2362,13 @@ class XMLWriter(object):
         self.simpleElement("integer", value=data)
 
     def _plistDate(self, data):
-        data = plistlib._dateToString(data)
+        data = _dateToString(data)
         self.simpleElement("date", value=data)
 
     def _plistData(self, data):
         self.beginElement("data")
         data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
-        for line in data.splitlines():
+        for line in tostr(data).splitlines():
             self.raw(line)
         self.endElement("data")
 
@@ -2311,7 +2384,7 @@ class XMLWriter(object):
         >>> attrs = dict(a="blah", x=1, y=2.1)
         >>> writer = XMLWriter(declaration=None)
         >>> writer.attributesToString(attrs)
-        u'x="1" y="2.1" a="blah"'
+        'x="1" y="2.1" a="blah"'
         """
         sorter = [
             (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in attrs.items()
@@ -2320,9 +2393,9 @@ class XMLWriter(object):
         for index, attr, value in sorted(sorter):
             attr = xmlEscapeAttribute(attr)
             value = xmlConvertValue(value)
-            pair = u"%s=\"%s\"" % (attr, value)
+            pair = "%s=\"%s\"" % (attr, value)
             formatted.append(pair)
-        return u" ".join(formatted)
+        return " ".join(formatted)
 
 
 def xmlEscapeText(text):
@@ -2333,59 +2406,59 @@ def xmlEscapeText(text):
           In Python 3.x all strings are Unicode-encoded by default, which allows for
           the doctests results to use any Unicode character.
 
-    >>> xmlEscapeText(u"&")
-    u'&amp;'
-    >>> xmlEscapeText(u"<")
-    u'&lt;'
-    >>> xmlEscapeText(u">")
-    u'&gt;'
-    >>> xmlEscapeText(u"a")
-    u'a'
-    >>> xmlEscapeText(u"ä")
-    u'\xc3\xa4'
-    >>> xmlEscapeText(u"ā")
-    u'\xc4\x81'
-    >>> xmlEscapeText(u"𐐀")
-    u'\xf0\x90\x90\x80'
-    >>> xmlEscapeText(u"©")
-    u'\xc2\xa9'
-    >>> xmlEscapeText(u"—")
-    u'\xe2\x80\x94'
-    >>> xmlEscapeText(u"1")
-    u'1'
-    >>> xmlEscapeText(u"1.0")
-    u'1.0'
-    >>> xmlEscapeText(u"'")
-    u"'"
-    >>> xmlEscapeText(u"/")
-    u'/'
-    >>> xmlEscapeText(u"\\")
-    u'\\'
-    >>> xmlEscapeText(u"\\r")
-    u'\\r'
+    >>> xmlEscapeText(u"&") == u"&amp;"
+    True
+    >>> xmlEscapeText(u"<") == u"&lt;"
+    True
+    >>> xmlEscapeText(u">") == u"&gt;"
+    True
+    >>> xmlEscapeText(u"a") == u"a"
+    True
+    >>> xmlEscapeText(u"ä") == u"ä"
+    True
+    >>> xmlEscapeText(u"ā") == u"ā"
+    True
+    >>> xmlEscapeText(u"𐐀") == u"𐐀"
+    True
+    >>> xmlEscapeText(u"©") == u"©"
+    True
+    >>> xmlEscapeText(u"—") == u"—"
+    True
+    >>> xmlEscapeText(u"1") == u"1"
+    True
+    >>> xmlEscapeText(u"1.0") == u"1.0"
+    True
+    >>> xmlEscapeText(u"'") == u"'"
+    True
+    >>> xmlEscapeText(u"/") == u"/"
+    True
+    >>> xmlEscapeText(u"\\") == u"\\"
+    True
+    >>> xmlEscapeText(u"\\r") == u"\\r"
+    True
     """
-    text = text.replace(u"&", u"&amp;")
-    text = text.replace(u"<", u"&lt;")
-    text = text.replace(u">", u"&gt;")
+    text = text.replace("&", "&amp;")
+    text = text.replace("<", "&lt;")
+    text = text.replace(">", "&gt;")
     return text
 
 def xmlEscapeAttribute(text):
     r"""
-    >>> xmlEscapeAttribute(u'"')
-    u'&quot;'
-    >>> xmlEscapeAttribute(u"'")
-    u"'"
-    >>> xmlEscapeAttribute(u"abc")
-    u'abc'
-    >>> xmlEscapeAttribute(u"123")
-    u'123'
-    >>> xmlEscapeAttribute(u"/")
-    u'/'
-    >>> xmlEscapeAttribute(u"\\")
-    u'\\'
+    >>> xmlEscapeAttribute('"')
+    '&quot;'
+    >>> xmlEscapeAttribute("'")
+    "'"
+    >>> xmlEscapeAttribute("abc")
+    'abc'
+    >>> xmlEscapeAttribute("123")
+    '123'
+    >>> xmlEscapeAttribute("/")
+    '/'
+    >>> xmlEscapeAttribute("\\")
+    '\\'
     """
     text = xmlEscapeText(text)
-    text = text.replace(u"\"", u"&quot;")
+    text = text.replace("\"", "&quot;")
     return text
 
 def xmlConvertValue(value):
@@ -2405,7 +2478,7 @@ def xmlConvertValue(value):
     >>> xmlConvertValue(0.2)
     '0.2'
     >>> xmlConvertValue("0.0")
-    u'0.0'
+    '0.0'
     """
     if isinstance(value, float):
         return xmlConvertFloat(value)
@@ -2445,27 +2518,27 @@ def xmlConvertInt(value):
     '0'
     >>> xmlConvertInt(-0)
     '0'
-    >>> xmlConvertInt(01)
+    >>> xmlConvertInt(0o01)
     '1'
-    >>> xmlConvertInt(- 01)
+    >>> xmlConvertInt(- 0o01)
     '-1'
-    >>> xmlConvertInt(000001)
+    >>> xmlConvertInt(0o000001)
     '1'
-    >>> xmlConvertInt(0000000000000001)
+    >>> xmlConvertInt(0o0000000000000001)
     '1'
     >>> xmlConvertInt(1000000000000001)
     '1000000000000001'
-    >>> xmlConvertInt(000001000001)
+    >>> xmlConvertInt(0o000001000001)
     '262145'
-    >>> xmlConvertInt(00000100000)
+    >>> xmlConvertInt(0o00000100000)
     '32768'
-    >>> xmlConvertInt(0000010)
+    >>> xmlConvertInt(0o0000010)
     '8'
-    >>> xmlConvertInt(-0000010)
+    >>> xmlConvertInt(-0o0000010)
     '-8'
-    >>> xmlConvertInt(0000020)
+    >>> xmlConvertInt(0o0000020)
     '16'
-    >>> xmlConvertInt(0000030)
+    >>> xmlConvertInt(0o0000030)
     '24'
     >>> xmlConvertInt(65536)
     '65536'
@@ -2523,7 +2596,7 @@ def subpathReadPlist(ufoPath, *subpath):
     and convert it into a Python object.
     """
     text = subpathReadFile(ufoPath, *subpath)
-    return plistlib.readPlistFromString(text)
+    return _readPlistFromBytes(text)
 
 # write
 
@@ -2542,7 +2615,7 @@ def subpathWriteFile(data, ufoPath, *subpath):
         existing = None
     if data != existing:
         f = open(path, "wb")
-        f.write(data)
+        f.write(tobytes(data))
         f.close()
 
 def subpathWritePlist(data, ufoPath, *subpath):
@@ -2554,7 +2627,7 @@ def subpathWritePlist(data, ufoPath, *subpath):
     file contains data that is different
     from the new data.
     """
-    data = plistlib.writePlistToString(data)
+    data = _writePlistToBytes(data)
     subpathWriteFile(data, ufoPath, *subpath)
 
 # rename
@@ -2707,50 +2780,50 @@ def userNameToFileName(userName, existing=[], prefix="", suffix=""):
     existing should be a case-insensitive list
     of all existing file names.
 
-    >>> userNameToFileName(u"a")
-    u'a'
-    >>> userNameToFileName(u"A")
-    u'A_'
-    >>> userNameToFileName(u"AE")
-    u'A_E_'
-    >>> userNameToFileName(u"Ae")
-    u'A_e'
-    >>> userNameToFileName(u"ae")
-    u'ae'
-    >>> userNameToFileName(u"aE")
-    u'aE_'
-    >>> userNameToFileName(u"a.alt")
-    u'a.alt'
-    >>> userNameToFileName(u"A.alt")
-    u'A_.alt'
-    >>> userNameToFileName(u"A.Alt")
-    u'A_.A_lt'
-    >>> userNameToFileName(u"A.aLt")
-    u'A_.aL_t'
-    >>> userNameToFileName(u"A.alT")
-    u'A_.alT_'
-    >>> userNameToFileName(u"T_H")
-    u'T__H_'
-    >>> userNameToFileName(u"T_h")
-    u'T__h'
-    >>> userNameToFileName(u"t_h")
-    u't_h'
-    >>> userNameToFileName(u"F_F_I")
-    u'F__F__I_'
-    >>> userNameToFileName(u"f_f_i")
-    u'f_f_i'
-    >>> userNameToFileName(u"Aacute_V.swash")
-    u'A_acute_V_.swash'
-    >>> userNameToFileName(u".notdef")
-    u'_notdef'
-    >>> userNameToFileName(u"con")
-    u'_con'
-    >>> userNameToFileName(u"CON")
-    u'C_O_N_'
-    >>> userNameToFileName(u"con.alt")
-    u'_con.alt'
-    >>> userNameToFileName(u"alt.con")
-    u'alt._con'
+    >>> userNameToFileName(u"a") == u"a"
+    True
+    >>> userNameToFileName(u"A") == u"A_"
+    True
+    >>> userNameToFileName(u"AE") == u"A_E_"
+    True
+    >>> userNameToFileName(u"Ae") == u"A_e"
+    True
+    >>> userNameToFileName(u"ae") == u"ae"
+    True
+    >>> userNameToFileName(u"aE") == u"aE_"
+    True
+    >>> userNameToFileName(u"a.alt") == u"a.alt"
+    True
+    >>> userNameToFileName(u"A.alt") == u"A_.alt"
+    True
+    >>> userNameToFileName(u"A.Alt") == u"A_.A_lt"
+    True
+    >>> userNameToFileName(u"A.aLt") == u"A_.aL_t"
+    True
+    >>> userNameToFileName(u"A.alT") == u"A_.alT_"
+    True
+    >>> userNameToFileName(u"T_H") == u"T__H_"
+    True
+    >>> userNameToFileName(u"T_h") == u"T__h"
+    True
+    >>> userNameToFileName(u"t_h") == u"t_h"
+    True
+    >>> userNameToFileName(u"F_F_I") == u"F__F__I_"
+    True
+    >>> userNameToFileName(u"f_f_i") == u"f_f_i"
+    True
+    >>> userNameToFileName(u"Aacute_V.swash") == u"A_acute_V_.swash"
+    True
+    >>> userNameToFileName(u".notdef") == u"_notdef"
+    True
+    >>> userNameToFileName(u"con") == u"_con"
+    True
+    >>> userNameToFileName(u"CON") == u"C_O_N_"
+    True
+    >>> userNameToFileName(u"con.alt") == u"_con.alt"
+    True
+    >>> userNameToFileName(u"alt.con") == u"alt._con"
+    True
     """
     # the incoming name must be a unicode string
     assert isinstance(userName, unicode), "The value for userName must be a unicode string."
@@ -2928,7 +3001,7 @@ def runTests():
             s = time.time()
             normalizeUFO(outPath)
             t = time.time() - s
-            print os.path.basename(inPath) + ":", t, "seconds"
+            print(os.path.basename(inPath) + ":", t, "seconds")
 
 
 if __name__ == "__main__":
