@@ -1983,6 +1983,10 @@ def _normalizeColorString(value):
     '1,1,1,1'
     >>> _normalizeColorString(".1,.1,.1,.1")
     '0.1,0.1,0.1,0.1'
+    >>> _normalizeColorString("1,1,1,a")
+    >>> _normalizeColorString("1,1,-1,1")
+    >>> _normalizeColorString("1,2,1,1")
+    >>> _normalizeColorString(",,,")
     """
     # INVALID DATA POSSIBILITY: bad color string
     # INVALID DATA POSSIBILITY: value < 0 or > 1
@@ -1992,6 +1996,8 @@ def _normalizeColorString(value):
         r, g, b, a = (float(i) for i in value.split(","))
     except ValueError:
         return
+    if any(x < 0 or x > 1 for x in (r, g, b, a)):
+    	return
     color = (xmlConvertFloat(i) for i in (r, g, b, a))
     return ",".join(color)
 
