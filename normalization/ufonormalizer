@@ -1222,6 +1222,18 @@ def _normalizeGlifNote(element, writer):
     >>> writer.getText() == u''
     True
 
+    >>> element = ET.fromstring("<note>   </note>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText() == u''
+    True
+
+    >>> element = ET.fromstring("<note>\n\n</note>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText() == u''
+    True
+
     >>> element = ET.fromstring("<note/>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
@@ -1231,6 +1243,8 @@ def _normalizeGlifNote(element, writer):
     value = element.text
     if not value:
         return
+    if not value.strip():
+    	return
     writer.beginElement("note")
     writer.text(value)
     writer.endElement("note")
