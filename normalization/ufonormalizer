@@ -1202,6 +1202,12 @@ def _normalizeGlifNote(element, writer):
     >>> writer.getText() == u"<note>\n\tBlah\n</note>"
     True
 
+    >>> element = ET.fromstring("<note>   Blah  \t\n\t  </note>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText() == u"<note>\n\tBlah\n</note>"
+    True
+
     >>> element = ET.fromstring("<note>Don't forget to check the béziers!!</note>")
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
@@ -1212,6 +1218,12 @@ def _normalizeGlifNote(element, writer):
     >>> writer = XMLWriter(declaration=None)
     >>> _normalizeGlifNote(element, writer)
     >>> writer.getText() == u"<note>\n\tA quick brown fox jumps over the lazy dog.\n\tP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>"
+    True
+
+    >>> element = ET.fromstring("<note>   Line1  \t\n\n    Line3\t  </note>")
+    >>> writer = XMLWriter(declaration=None)
+    >>> _normalizeGlifNote(element, writer)
+    >>> writer.getText() == u"<note>\n\tLine1\n\t\n\t    Line3\n</note>"
     True
 
     undefined
@@ -2133,7 +2145,7 @@ class XMLWriter(object):
             if not paragraph:
                 paragraphs.append("")
             else:
-                paragraph = textwrap.wrap(paragraph,
+                paragraph = textwrap.wrap(paragraph.rstrip(),
                     width=xmlTextMaxLineLength,
                     expand_tabs=False,
                     replace_whitespace=False,
