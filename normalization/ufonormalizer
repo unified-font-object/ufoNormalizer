@@ -462,7 +462,7 @@ def _normalizeFontInfoGuidelines(obj):
     r"""
     - Follow general guideline normalization rules.
 
-    >>> test = '''
+    >>> test = '''\
     ... <plist version="1.0">
     ...     <dict>
     ...         <key>guidelines</key>
@@ -503,7 +503,7 @@ def _normalizeFontInfoGuidelines(obj):
 
     no guidelines
     -------------
-    >>> test = '''
+    >>> test = '''\
     ... <plist version="1.0">
     ...     <dict>
     ...         <key>guidelines</key>

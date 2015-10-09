@@ -3,7 +3,7 @@ install:
   - pip install coveralls
 python:
   - "2.7"
-  - "3.3"
+  - "3.4"
 script:
   - coverage run normalization/ufonormalizer -t
   - normalization/ufonormalizer -t | tee /dev/stderr | grep "\*\*\*Test Failed\*\*\*"; if [[ ${PIPESTATUS[2]} == "0" ]]; then exit 1 ; fi
