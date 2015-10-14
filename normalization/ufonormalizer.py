@@ -27,14 +27,14 @@ all possible files to a standard XML formatting, data
 structure and file naming scheme.
 """ % __version__
 
-def runFromCommandline():
+def main(args=None):
     import argparse
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("input", help="Path to a UFO to normalize.", nargs="?")
     parser.add_argument("-t", "--test", help="Run the normalizer's internal tests.", action="store_true")
     parser.add_argument("-o", "--output", help="Output path. If not given, the input path will be used.")
     parser.add_argument("-a", "--all", help="Normalize all files in the UFO. By default, only files modified since the previous normalization will be processed.", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     if args.test:
         runTests()
         return
@@ -3338,4 +3338,4 @@ def runTests():
 
 
 if __name__ == "__main__":
-    runFromCommandline()
+    main()
