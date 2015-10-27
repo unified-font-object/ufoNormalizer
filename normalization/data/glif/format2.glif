@@ -30,7 +30,7 @@
 			<key>com.letterror.somestuff</key>
 			<string>arbitrary custom data!</string>
 			<key>public.markColor</key>
-			<string>1.0,0.0,0,0.5</string>
+			<string>1,0,0,0.5</string>
 		</dict>
 	</lib>
 	<note>

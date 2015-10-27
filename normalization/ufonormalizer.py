@@ -787,7 +787,7 @@ def normalizeGLIF(ufoPath, *subpath):
     ...             <key>com.letterror.somestuff</key>
     ...             <string>arbitrary custom data!</string>
     ...             <key>public.markColor</key>
-    ...             <string>1.0,0.0,0,0.5</string>
+    ...             <string>1,0,0,0.5</string>
     ...         </dict>
     ...     </lib>
     ...     <note>
@@ -859,13 +859,6 @@ def normalizeGLIF(ufoPath, *subpath):
         elif tag == "lib":
             lib = element
     imageFileName = None
-    # normalize the mark color
-    if lib is not None:
-        if "public.markColor" in lib:
-            color = lib.pop("public.markColor")
-            color = _normalizeColorString(color)
-            if color is not None:
-                lib["public.markColor"] = color
     # write the data
     writer.beginElement("glyph", attrs=dict(name=name, format=glifVersion))
     for uni in unicodes:
@@ -1332,6 +1325,12 @@ def _normalizeGlifLib(element, writer):
         return
     obj = _convertPlistElementToObject(element[0])
     if obj:
+        # normalize the mark color
+        if "public.markColor" in obj:
+            color = obj.pop("public.markColor")
+            color = _normalizeColorString(color)
+            if color is not None:
+                obj["public.markColor"] = color
         writer.beginElement("lib")
         writer.propertyListObject(obj)
         writer.endElement("lib")
