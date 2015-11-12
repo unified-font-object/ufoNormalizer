@@ -12,5 +12,6 @@ setup(name="ufonormalizer",
           'console_scripts': [
               "ufonormalizer = ufonormalizer:main",
               ]
-          }
+          },
+      test_suite="normalization"
       )
