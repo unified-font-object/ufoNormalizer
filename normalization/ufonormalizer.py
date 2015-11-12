@@ -84,17 +84,23 @@ try:
 except NameError:
     unicode = str
 
-# Python2 does not have plistlib.readPlistFromBytes it has
+# Python 3.4 deprecated plistlib.readPlistFromBytes for loads.
+# Python 2 does not have plistlib.readPlistFromBytes it has
 # plistlib.readPlistFromString instead.
-try:
-    plistlib.readPlistFromBytes
+if hasattr(plistlib, "loads"):
 
+    def _readPlistFromBytes(data):
+        return plistlib.loads(data)
+
+    def _writePlistToBytes(plist):
+        return plistlib.dumps(plist)
+elif hasattr(plistlib, "readPlistFromBytes"):
     def _readPlistFromBytes(data):
         return plistlib.readPlistFromBytes(tobytes(data))
 
     def _writePlistToBytes(plist):
         return plistlib.writePlistToBytes(plist)
-except AttributeError:
+else:
     def _readPlistFromBytes(data):
         return plistlib.readPlistFromString(data)
 
