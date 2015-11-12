@@ -3109,6 +3109,9 @@ reservedFileNames = "CON PRN AUX CLOCK$ NUL A:-Z: COM1".lower().split(" ")
 reservedFileNames += "LPT1 LPT2 LPT3 COM2 COM3 COM4".lower().split(" ")
 maxFileNameLength = 255
 
+class NameTranslationError(Exception):
+    pass
+
 def userNameToFileName(userName, existing=[], prefix="", suffix=""):
     """
     existing should be a case-insensitive list
