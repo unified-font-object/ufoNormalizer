@@ -7,6 +7,6 @@ python:
   - "3.4"
 script:
   - coverage run normalization/ufonormalizer.py -t
-  - ufonormalizer -t | tee /dev/stderr | grep "\*\*\*Test Failed\*\*\*"; if [[ ${PIPESTATUS[2]} == "0" ]]; then exit 1 ; fi
+  - python setup.py test
 after_success:
   coveralls
