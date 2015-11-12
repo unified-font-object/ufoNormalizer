@@ -5,6 +5,7 @@ install:
 python:
   - "2.7"
   - "3.4"
+  - "3.5"
 script:
   - coverage run normalization/ufonormalizer.py -t
   - python setup.py test
