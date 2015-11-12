@@ -3314,9 +3314,12 @@ def _runProfile(outPath):
     normalizeUFO(outPath)
 
 def runTests():
-    # doctests
-    import doctest
-    doctest.testmod()
+    # unit tests
+    import unittest
+    import sys
+    # unittest.main() will try parsing arguments, "-t" in this case
+    sys.argv = sys.argv[:1]
+    unittest.main("test_ufonormalizer", exit=False)
 
     # test file searching
     paths = []
