@@ -1635,7 +1635,7 @@ def runTests():
     import sys
     # unittest.main() will try parsing arguments, "-t" in this case
     sys.argv = sys.argv[:1]
-    unittest.main("test_ufonormalizer", exit=False)
+    unittest.main("test_ufonormalizer", exit=False, verbosity=2)
 
     # test file searching
     paths = []
