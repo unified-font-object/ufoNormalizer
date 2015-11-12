@@ -244,7 +244,7 @@ def normalizeGlyphsDirectoryNames(ufoPath):
             newLayerDirectory = "glyphs"
         else:
             newLayerDirectory = userNameToFileName(unicode(layerName), newLayerDirectories, prefix="glyphs.")
-        newLayerDirectories.add(newLayerDirectory)
+        newLayerDirectories.add(newLayerDirectory.lower())
         newLayerMapping[layerName] = newLayerDirectory
     # don't do a direct rename because an old directory
     # may have the same name as a new directory.
@@ -387,7 +387,7 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
     newFileNames = set()
     for glyphName in sorted(oldGlyphMapping.keys()):
         newFileName = userNameToFileName(unicode(glyphName), newFileNames, suffix=".glif")
-        newFileNames.add(newFileName)
+        newFileNames.add(newFileName.lower())
         newGlyphMapping[glyphName] = newFileName
     # don't do a direct rewrite in case an old file has
     # the same name as a new file.
