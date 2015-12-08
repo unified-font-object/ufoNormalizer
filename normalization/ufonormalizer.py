@@ -3000,12 +3000,14 @@ def subpathGetModTime(ufoPath, *subpath):
 def subpathNeedsRefresh(modTimes, ufoPath, *subPath):
     """
     Determine if a file needs to be refreshed.
+    Returns True if the file's latest modification time is different
+    from its previous modification time.
     """
     previous = modTimes.get(subPath[-1])
     if previous is None:
         return True
     latest = subpathGetModTime(ufoPath, *subPath)
-    return latest == previous
+    return latest != previous
 
 # ---------------
 # Store Mod Times
