@@ -2468,8 +2468,13 @@ class XMLWriter(object):
         True
 
         >>> writer = XMLWriter(declaration=None)
+        >>> writer.propertyListObject({"a" : 20.2})
+        >>> writer.getText() == u'<dict>\\n\\t<key>a</key>\\n\\t<real>20.2</real>\\n</dict>'
+        True
+
+        >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject({"a" : 20.0})
-        >>> writer.getText() == u'<dict>\\n\\t<key>a</key>\\n\\t<real>20</real>\\n</dict>'
+        >>> writer.getText() == u'<dict>\\n\\t<key>a</key>\\n\\t<integer>20</integer>\\n</dict>'
         True
 
         >>> writer = XMLWriter(declaration=None)
@@ -2533,28 +2538,28 @@ class XMLWriter(object):
         >>> writer.getText() == u'<real>-1.1</real>'
         True
 
+        Integer
+        -------
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(1.0)
-        >>> writer.getText() == u'<real>1</real>'
+        >>> writer.getText() == u'<integer>1</integer>'
         True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(-1.0)
-        >>> writer.getText() == u'<real>-1</real>'
+        >>> writer.getText() == u'<integer>-1</integer>'
         True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(0.0)
-        >>> writer.getText() == u'<real>0</real>'
+        >>> writer.getText() == u'<integer>0</integer>'
         True
 
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(-0.0)
-        >>> writer.getText() == u'<real>0</real>'
+        >>> writer.getText() == u'<integer>0</integer>'
         True
 
-        Integer
-        -------
         >>> writer = XMLWriter(declaration=None)
         >>> writer.propertyListObject(1)
         >>> writer.getText() == u'<integer>1</integer>'
@@ -2635,7 +2640,12 @@ class XMLWriter(object):
         elif isinstance(data, (int, long)):
             self._plistInt(data)
         elif isinstance(data, float):
-            self._plistFloat(data)
+        	dataStr = xmlConvertFloat(data)
+        	try:
+        		data = int(dataStr)
+        		self._plistInt(data)
+        	except ValueError:
+	            self._plistFloat(data)
         elif isinstance(data, plistlib.Data):
             self._plistData(data)
         elif isinstance(data, datetime.datetime):
