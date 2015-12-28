@@ -1318,7 +1318,8 @@ class XMLWriterTest(object):
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(["a"])
-        self.assetEqual(writer.getText(), '<array>\\n\\t<string>a</string>\\n</array>')
+        self.assetEqual(writer.getText(),
+                        '<array>\\n\\t<string>a</string>\\n</array>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject([None])
@@ -1340,10 +1341,16 @@ class XMLWriterTest(object):
             '<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>')
 
         writer = XMLWriter(declaration=None)
+        writer.propertyListObject({"a": 20.2})
+        self.assetEqual(
+            writer.getText(),
+            '<dict>\\n\\t<key>a</key>\\n\\t<real>20.2</real>\\n</dict>')
+
+        writer = XMLWriter(declaration=None)
         writer.propertyListObject({"a": 20.0})
         self.assetEqual(
             writer.getText(),
-            '<dict>\\n\\t<key>a</key>\\n\\t<real>20</real>\\n</dict>')
+            '<dict>\\n\\t<key>a</key>\\n\\t<integer>20</integer>\\n</dict>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({"": ""})
@@ -1396,23 +1403,23 @@ class XMLWriterTest(object):
         writer.propertyListObject(-1.1)
         self.assetEqual(writer.getText(), '<real>-1.1</real>')
 
+    def test_propertyListObject_integer(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(1.0)
-        self.assetEqual(writer.getText(), '<real>1</real>')
+        self.assetEqual(writer.getText(), '<integer>1</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(-1.0)
-        self.assetEqual(writer.getText(), '<real>-1</real>')
+        self.assetEqual(writer.getText(), '<integer>-1</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(0.0)
-        self.assetEqual(writer.getText(), '<real>0</real>')
+        self.assetEqual(writer.getText(), '<integer>0</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(-0.0)
-        self.assetEqual(writer.getText(), '<real>0</real>')
+        self.assetEqual(writer.getText(), '<integer>0</integer>')
 
-    def test_propertyListObject_integer(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(1)
         self.assetEqual(writer.getText(), '<integer>1</integer>')
