@@ -84,17 +84,23 @@ try:
 except NameError:
     unicode = str
 
-# Python2 does not have plistlib.readPlistFromBytes it has
+# Python 3.4 deprecated plistlib.readPlistFromBytes for loads.
+# Python 2 does not have plistlib.readPlistFromBytes it has
 # plistlib.readPlistFromString instead.
-try:
-    plistlib.readPlistFromBytes
+if hasattr(plistlib, "loads"):
 
+    def _readPlistFromBytes(data):
+        return plistlib.loads(data)
+
+    def _writePlistToBytes(plist):
+        return plistlib.dumps(plist)
+elif hasattr(plistlib, "readPlistFromBytes"):
     def _readPlistFromBytes(data):
         return plistlib.readPlistFromBytes(tobytes(data))
 
     def _writePlistToBytes(plist):
         return plistlib.writePlistToBytes(plist)
-except AttributeError:
+else:
     def _readPlistFromBytes(data):
         return plistlib.readPlistFromString(data)
 
@@ -197,34 +203,6 @@ def normalizeGlyphsDirectoryNames(ufoPath):
     """
     Normalize glyphs directory names following
     UFO 3 user name to file name convention.
-
-    non-standard directory names
-    -----------------------------
-    >>> oldLayers = [
-    ...     ("public.default", "glyphs"),
-    ...     ("Sketches", "glyphs.sketches"),
-    ... ]
-    >>> expectedLayers = [
-    ...     ("public.default", "glyphs"),
-    ...     ("Sketches", "glyphs.S_ketches"),
-    ... ]
-    >>> _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers)
-    True
-
-    old directory with same name as new directory
-    ---------------------------------------------
-    >>> oldLayers = [
-    ...     ("public.default", "glyphs"),
-    ...     ("one", "glyphs.two"),
-    ...     ("two", "glyphs.three")
-    ... ]
-    >>> expectedLayers = [
-    ...     ("public.default", "glyphs"),
-    ...     ("one", "glyphs.one"),
-    ...     ("two", "glyphs.two")
-    ... ]
-    >>> _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers)
-    True
     """
     # INVALID DATA POSSIBILITY: directory for layer name may not exist
     # INVALID DATA POSSIBILITY: directory may not be stored in layer contents
@@ -329,16 +307,6 @@ def normalizeLayerInfoPlist(ufoPath, layerDirectory):
 def _normalizeLayerInfoColor(obj):
     """
     - Normalize the color if specified.
-
-    >>> obj = dict(color="1,0,0,.5")
-    >>> _normalizeLayerInfoColor(obj)
-    >>> obj
-    {'color': '1,0,0,0.5'}
-
-    >>> obj = dict(color="invalid")
-    >>> _normalizeLayerInfoColor(obj)
-    >>> obj
-    {}
     """
     if "color" in obj:
         color = obj.pop("color")
@@ -350,32 +318,6 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
     """
     Normalize GLIF file names following
     UFO 3 user name to file name convention.
-
-    non-standard file names
-    -----------------------
-    >>> oldNames = {
-    ...     "A" : "a.glif",
-    ...     "B" : "b.glif"
-    ... }
-    >>> expectedNames = {
-    ...     "A" : "A_.glif",
-    ...     "B" : "B_.glif"
-    ... }
-    >>> _test_normalizeGlyphNames(oldNames, expectedNames)
-    True
-
-    old file with same name as new file
-    -----------------------------------
-    >>> oldNames = {
-    ...     "one" : "two.glif",
-    ...     "two" : "three.glif"
-    ... }
-    >>> expectedNames = {
-    ...     "one" : "one.glif",
-    ...     "two" : "two.glif"
-    ... }
-    >>> _test_normalizeGlyphNames(oldNames, expectedNames)
-    True
     """
     # INVALID DATA POSSIBILITY: no contents.plist
     # INVALID DATA POSSIBILITY: file for glyph name may not exist
@@ -459,60 +401,8 @@ def normalizeFontInfoPlist(ufoPath, modTimes):
     _normalizePlistFile(modTimes, ufoPath, "fontinfo.plist", preprocessor=_normalizeFontInfoGuidelines)
 
 def _normalizeFontInfoGuidelines(obj):
-    r"""
+    """
     - Follow general guideline normalization rules.
-
-    >>> test = '''\
-    ... <plist version="1.0">
-    ...     <dict>
-    ...         <key>guidelines</key>
-    ...         <array>
-    ...             <dict>
-    ...                 <key>x</key><integer>1</integer>
-    ...                 <key>y</key><integer>2</integer>
-    ...                 <key>angle</key><integer>3</integer>
-    ...                 <key>color</key><string>1,0,0,.5</string>
-    ...             </dict>
-    ...             <dict>
-    ...                 <key>x</key><integer>4</integer>
-    ...                 <key>y</key><integer>5</integer>
-    ...                 <key>angle</key><integer>6</integer>
-    ...                 <key>color</key><string>0,1,0,.5</string>
-    ...             </dict>
-    ...             <dict>
-    ...                 <key>x</key><integer>7</integer>
-    ...                 <key>y</key><integer>8</integer>
-    ...                 <key>angle</key><integer>9</integer>
-    ...                 <key>color</key><string>invalid</string>
-    ...             </dict>
-    ...         </array>
-    ...     </dict>
-    ... </plist>
-    ... '''
-    >>> expected = {
-    ...     "guidelines" : [
-    ...         dict(x=1, y=2, angle=3, color="1,0,0,0.5"),
-    ...         dict(x=4, y=5, angle=6, color="0,1,0,0.5"),
-    ...         dict(x=7, y=8, angle=9),
-    ...     ]
-    ... }
-    >>> plist = _readPlistFromBytes(test)
-    >>> _normalizeFontInfoGuidelines(plist)
-    >>> plist == expected
-    True
-
-    no guidelines
-    -------------
-    >>> test = '''\
-    ... <plist version="1.0">
-    ...     <dict>
-    ...         <key>guidelines</key>
-    ...         <array/>
-    ...     </dict>
-    ... </plist>
-    ... '''
-    >>> plist = _readPlistFromBytes(test)
-    >>> _normalizeFontInfoGuidelines(plist)
     """
     guidelines = obj.get("guidelines")
     if not guidelines:
@@ -528,98 +418,6 @@ def _normalizeDictGuideline(guideline):
     """
     - Don't write if angle is defined but either x or y are not defined.
     - Don't write if both x and y are defined but angle is not defined.
-
-    everything
-    ----------
-    >>> guideline = dict(x=1, y=2, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = dict(x=1, y=2, angle=3, name="test", color="1,0,0,0.5", identifier="TEST")
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    no x
-    ----
-    >>> guideline = dict(y=2, name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = dict(y=2, name="test", color="1,0,0,0.5", identifier="TEST")
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    >>> guideline = dict(y=2, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = None
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    invalid x
-    ---------
-    >>> guideline = dict(x="invalid", y=2, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = None
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    no y
-    ----
-    >>> guideline = dict(x=1, name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = dict(x=1, name="test", color="1,0,0,0.5", identifier="TEST")
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    >>> guideline = dict(x=1, angle=3, name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = None
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    invalid y
-    ---------
-    >>> guideline = dict(x=1, y="invalid", angle=3, name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = None
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    no angle
-    --------
-    >>> guideline = dict(x=1, y=2, name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = None
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    invalid angle
-    -------------
-    >>> guideline = dict(x=1, y=3, angle="invalid", name="test", color="1,0,0,.5", identifier="TEST")
-    >>> expected = None
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    no name
-    -------
-    >>> guideline = dict(x=1, y=2, angle=3, color="1,0,0,.5", identifier="TEST")
-    >>> expected = dict(x=1, y=2, angle=3, color="1,0,0,0.5", identifier="TEST")
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    no color
-    --------
-    >>> guideline = dict(x=1, y=2, angle=3, name="test", identifier="TEST")
-    >>> expected = dict(x=1, y=2, angle=3, name="test", identifier="TEST")
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
-
-    no identifier
-    -------------
-    >>> guideline = dict(x=1, y=2, angle=3, name="test", color="1,0,0,.5")
-    >>> expected = dict(x=1, y=2, angle=3, name="test", color="1,0,0,0.5")
-    >>> result = _normalizeDictGuideline(guideline)
-    >>> result == expected
-    True
     """
     x = guideline.get("x")
     y = guideline.get("y")
@@ -718,106 +516,6 @@ def normalizeGLIF(ufoPath, *subpath):
     contain a robust series of element variations as the
     testing of those will be handled by the element
     normalization functions.
-
-    >>> glifFormat = {}
-    >>> glifFormat[1] = '''
-    ... <?xml version="1.0" encoding="UTF-8"?>
-    ... <glyph name="period" format="1">
-    ...     <unicode hex="002E"/>
-    ...     <advance width="268"/>
-    ...     <outline>
-    ...         <contour>
-    ...             <point x="237" y="152"/>
-    ...             <point x="193" y="187"/>
-    ...             <point x="134" y="187" type="curve" smooth="yes"/>
-    ...             <point x="74" y="187"/>
-    ...             <point x="30" y="150"/>
-    ...             <point x="30" y="88" type="curve" smooth="yes"/>
-    ...             <point x="30" y="23"/>
-    ...             <point x="74" y="-10"/>
-    ...             <point x="134" y="-10" type="curve" smooth="yes"/>
-    ...             <point x="193" y="-10"/>
-    ...             <point x="237" y="25"/>
-    ...             <point x="237" y="88" type="curve" smooth="yes"/>
-    ...         </contour>
-    ...         <component base="a"/>
-    ...         <contour>
-    ...             <point name="above" x="236" y="380" type="move"/>
-    ...         </contour>
-    ...     </outline>
-    ...     <lib>
-    ...         <dict>
-    ...             <key>com.letterror.somestuff</key>
-    ...             <string>arbitrary custom data!</string>
-    ...         </dict>
-    ...     </lib>
-    ... </glyph>
-    ... '''.strip().replace("    ", "\\t")
-
-    >>> glifFormat[2] = '''
-    ... <?xml version="1.0" encoding="UTF-8"?>
-    ... <glyph name="period" format="2">
-    ...     <unicode hex="002E"/>
-    ...     <advance width="268"/>
-    ...     <image fileName="period sketch.png" xScale="0.5" yScale="0.5"/>
-    ...     <outline>
-    ...         <contour>
-    ...             <point name="above" x="236" y="380" type="move"/>
-    ...         </contour>
-    ...         <contour>
-    ...             <point x="237" y="152"/>
-    ...             <point x="193" y="187"/>
-    ...             <point x="134" y="187" type="curve" smooth="yes"/>
-    ...             <point x="74" y="187"/>
-    ...             <point x="30" y="150"/>
-    ...             <point x="30" y="88" type="curve" smooth="yes"/>
-    ...             <point x="30" y="23"/>
-    ...             <point x="74" y="-10"/>
-    ...             <point x="134" y="-10" type="curve" smooth="yes"/>
-    ...             <point x="193" y="-10"/>
-    ...             <point x="237" y="25"/>
-    ...             <point x="237" y="88" type="curve" smooth="yes"/>
-    ...         </contour>
-    ...         <component base="a"/>
-    ...     </outline>
-    ...     <anchor name="top" x="74" y="197"/>
-    ...     <guideline name="overshoot" y="-12"/>
-    ...     <lib>
-    ...         <dict>
-    ...             <key>com.letterror.somestuff</key>
-    ...             <string>arbitrary custom data!</string>
-    ...             <key>public.markColor</key>
-    ...             <string>1,0,0,0.5</string>
-    ...         </dict>
-    ...     </lib>
-    ...     <note>
-    ...         arbitrary text about the glyph
-    ...     </note>
-    ... </glyph>
-    ... '''.strip().replace("    ", "\\t")
-
-    formats 1 & 2
-    -------------
-    >>> glifFolderPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'glif')
-    >>> os.chdir(glifFolderPath)
-    >>> for i in [1, 2]:
-    ...     glifFileName = 'format%s.glif' % i
-    ...     normalizeGLIF(glifFolderPath, glifFileName)
-    ...     glifFile = open(glifFileName, 'r')
-    ...     glifFileData = glifFile.read()
-    ...     glifFile.close()
-    ...     glifFileData == glifFormat[i]
-    True
-    'period sketch.png'
-    True
-
-    no format
-    ---------
-    >>> glifFileName = 'formatNone.glif'
-    >>> normalizeGLIF(glifFolderPath, glifFileName) # doctest: +ELLIPSIS
-    Traceback (most recent call last):
-        ...
-    UFONormalizerError: Undefined GLIF format: ...formatNone.glif
     """
     # INVALID DATA POSSIBILITY: format version that can't be converted to int
     # read and parse
@@ -895,76 +593,6 @@ def _normalizeGlifUnicode(element, writer):
     - Don't write unicode element if hex attribute is not defined.
     - Don't write unicode element if value for hex value is not a proper hex value.
     - Write hex value as all uppercase, zero padded string.
-
-    without hex
-    -----------
-    >>> element = ET.fromstring("<unicode />")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<unicode hex=''/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<unicode hexagon=''/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<unicode hex='xyz'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    with hex
-    --------
-    >>> element = ET.fromstring("<unicode hex='0041'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u'<unicode hex="0041"/>'
-    True
-
-    >>> element = ET.fromstring("<unicode hex='41'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u'<unicode hex="0041"/>'
-    True
-
-    >>> element = ET.fromstring("<unicode hex='ea'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u'<unicode hex="00EA"/>'
-    True
-
-    >>> element = ET.fromstring("<unicode hex='2Af'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u'<unicode hex="02AF"/>'
-    True
-
-    >>> element = ET.fromstring("<unicode hex='0000fFfF'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u'<unicode hex="FFFF"/>'
-    True
-
-    >>> element = ET.fromstring("<unicode hex='10000'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u'<unicode hex="10000"/>'
-    True
-
-    >>> element = ET.fromstring("<unicode hex='abcde'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifUnicode(element, writer)
-    >>> writer.getText() == u'<unicode hex="ABCDE"/>'
-    True
     """
     v = element.attrib.get("hex")
     # INVALID DATA POSSIBILITY: no hex value
@@ -984,106 +612,6 @@ def _normalizeGlifAdvance(element, writer):
     - Don't write default values (width=0, height=0)
     - Ignore values that can't be converted to a number.
     - Don't write an empty element.
-
-    undefined
-    ---------
-    >>> element = ET.fromstring("<advance />")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    defaults
-    --------
-    >>> element = ET.fromstring("<advance width='0'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<advance height='0'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<advance width='0' height='0'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<advance width='1' height='0'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u'<advance width="1"/>'
-    True
-
-    >>> element = ET.fromstring('<advance width="0" height="1"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u'<advance height="1"/>'
-    True
-
-    width
-    -----
-    >>> element = ET.fromstring('<advance width="325.0"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u'<advance width="325"/>'
-    True
-
-    >>> element = ET.fromstring('<advance width="325.1"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u'<advance width="325.1"/>'
-    True
-
-    >>> element = ET.fromstring('<advance width="-325.0"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u'<advance width="-325"/>'
-    True
-
-    height
-    ------
-    >>> element = ET.fromstring('<advance height="325.0"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u'<advance height="325"/>'
-    True
-
-    >>> element = ET.fromstring('<advance height="325.1"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u'<advance height="325.1"/>'
-    True
-
-    >>> element = ET.fromstring('<advance height="-325.0"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u'<advance height="-325"/>'
-    True
-
-    invalid values
-    --------------
-    >>> element = ET.fromstring('<advance width="a" height="_"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring('<advance width="60" height="_"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring('<advance width="a" height="50"/>')
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAdvance(element, writer)
-    >>> writer.getText() == u''
-    True
     """
     # INVALID DATA POSSIBILITY: value that can't be converted to float
     w = element.attrib.get("width", "0")
@@ -1106,46 +634,6 @@ def _normalizeGlifAdvance(element, writer):
 def _normalizeGlifImage(element, writer):
     """
     - Don't write if fileName is not defined.
-
-    everything
-    ----------
-    >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText() == u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200" color="1,0,0,0.5"/>'
-    True
-
-    empty
-    -----
-    >>> element = ET.fromstring("<image />")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    no file name
-    ------------
-    >>> element = ET.fromstring("<image xOffset='100' yOffset='200' xScale='.75' yScale='.75' color='1,0,0,.5'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    no transformation
-    -----------------
-    >>> element = ET.fromstring("<image fileName='Sketch 1.png' color='1,0,0,.5' />")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText() == u'<image fileName="Sketch 1.png" color="1,0,0,0.5"/>'
-    True
-
-    no color
-    --------
-    >>> element = ET.fromstring("<image fileName='Sketch 1.png' xOffset='100' yOffset='200' xScale='.75' yScale='.75'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifImage(element, writer)
-    >>> writer.getText() == u'<image fileName="Sketch 1.png" xScale="0.75" yScale="0.75" xOffset="100" yOffset="200"/>'
-    True
     """
     # INVALID DATA POSSIBILITY: no file name defined
     # INVALID DATA POSSIBILITY: non-existent file referenced
@@ -1165,67 +653,6 @@ def _normalizeGlifImage(element, writer):
 def _normalizeGlifAnchor(element, writer):
     """
     - Don't write if x or y are not defined.
-
-    everything
-    ----------
-    >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText() == u'<anchor name="test" x="230" y="4.5" color="1,0,0,0.5" identifier="TEST"/>'
-    True
-
-    no name
-    -------
-    >>> element = ET.fromstring("<anchor x='230' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText() == u'<anchor x="230" y="4.5" color="1,0,0,0.5" identifier="TEST"/>'
-    True
-
-    no x
-    ----
-    >>> element = ET.fromstring("<anchor name='test' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<anchor name='test' x='invalid' y='4.50' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    no y
-    ----
-    >>> element = ET.fromstring("<anchor name='test' x='230' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<anchor name='test' x='230' y='invalid' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    no color
-    --------
-    >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText() == u'<anchor name="test" x="230" y="4.5" identifier="TEST"/>'
-    True
-
-    no identifier
-    -------------
-    >>> element = ET.fromstring("<anchor name='test' x='230' y='4.50' color='1,0,0,.5'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifAnchor(element, writer)
-    >>> writer.getText() == u'<anchor name="test" x="230" y="4.5" color="1,0,0,0.5"/>'
-    True
-
     """
     # INVALID DATA POSSIBILITY: no x defined
     # INVALID DATA POSSIBILITY: no y defined
@@ -1259,22 +686,6 @@ def _normalizeGlifAnchor(element, writer):
 def _normalizeGlifGuideline(element, writer):
     """
     - Follow general guideline normalization rules.
-
-    everything
-    ----------
-    >>> element = ET.fromstring("<guideline x='1' y='2' angle='3' name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText() == u'<guideline name="test" x="1" y="2" angle="3" color="1,0,0,0.5" identifier="TEST"/>'
-    True
-
-    invalid
-    -------
-    >>> element = ET.fromstring("<guideline name='test' color='1,0,0,.5' identifier='TEST'/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifGuideline(element, writer)
-    >>> writer.getText() == u''
-    True
     """
     # INVALID DATA POSSIBILITY: x, y and angle not defined according to the spec
     # INVALID DATA POSSIBILITY: angle < 0 or > 360
@@ -1288,38 +699,8 @@ def _normalizeGlifGuideline(element, writer):
         writer.simpleElement("guideline", attrs=normalized)
 
 def _normalizeGlifLib(element, writer):
-    r"""
+    """
     - Don't write an empty element.
-
-    defined
-    -------
-    >>> e = '''
-    ... <lib>
-    ...     <dict>
-    ...         <key>foo</key>
-    ...         <string>bar</string>
-    ...     </dict>
-    ... </lib>
-    ... '''.strip()
-    >>> element = ET.fromstring(e)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifLib(element, writer)
-    >>> writer.getText() == u'<lib>\n\t<dict>\n\t\t<key>foo</key>\n\t\t<string>bar</string>\n\t</dict>\n</lib>'
-    True
-
-    undefined
-    ---------
-    >>> element = ET.fromstring("<lib></lib>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifLib(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<lib><dict></dict></lib>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifLib(element, writer)
-    >>> writer.getText() == u''
-    True
     """
     if not len(element):
         return
@@ -1336,66 +717,8 @@ def _normalizeGlifLib(element, writer):
         writer.endElement("lib")
 
 def _normalizeGlifNote(element, writer):
-    r"""
+    """
     - Don't write an empty element.
-
-    defined
-    -------
-    >>> element = ET.fromstring("<note>Blah</note>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u"<note>\n\tBlah\n</note>"
-    True
-
-    >>> element = ET.fromstring("<note>   Blah  \t\n\t  </note>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u"<note>\n\tBlah\n</note>"
-    True
-
-    >>> element = ET.fromstring("<note>Don't forget to check the béziers!!</note>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u"<note>\n\tDon't forget to check the b\xe9ziers!!\n</note>"
-    True
-
-    >>> element = ET.fromstring("<note>A quick brown fox jumps over the lazy dog.\nPříliš žluťoučký kůň úpěl ďábelské ódy.</note>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u"<note>\n\tA quick brown fox jumps over the lazy dog.\n\tP\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>"
-    True
-
-    >>> element = ET.fromstring("<note>   Line1  \t\n\n    Line3\t  </note>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u"<note>\n\tLine1\n\t\n\t    Line3\n</note>"
-    True
-
-    undefined
-    ---------
-    >>> element = ET.fromstring("<note></note>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<note>   </note>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<note>\n\n</note>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> element = ET.fromstring("<note/>")
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifNote(element, writer)
-    >>> writer.getText() == u''
-    True
     """
     value = element.text
     if not value:
@@ -1407,89 +730,12 @@ def _normalizeGlifNote(element, writer):
     writer.endElement("note")
 
 def _normalizeGlifOutlineFormat1(element, writer):
-    r"""
+    """
     - Don't write an empty element.
     - Don't write an empty contour.
     - Don't write an empty component.
     - Retain contour and component order except for implied anchors in < UFO 3.
     - If the UFO format < 3, move implied anchors to the end.
-
-    empty
-    -----
-    >>> outline = '''
-    ... <outline/>
-    ... '''
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> outline = '''
-    ... <outline>
-    ... </outline>
-    ... '''
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> outline = '''
-    ... <outline>
-    ...     <contour/>
-    ...     <component/>
-    ... </outline>
-    ... '''
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText() == ''
-    True
-
-    element order
-    -------------
-    >>> outline = '''
-    ... <outline>
-    ...     <contour>
-    ...         <point type="move" y="0" x="0" name="anchor1"/>
-    ...     </contour>
-    ...     <contour>
-    ...         <point type="line" y="1" x="1"/>
-    ...     </contour>
-    ...     <component base="2"/>
-    ...     <contour>
-    ...         <point type="line" y="3" x="3"/>
-    ...     </contour>
-    ...     <component base="4"/>
-    ...     <contour>
-    ...         <point type="move" y="0" x="0" name="anchor2"/>
-    ...     </contour>
-    ... </outline>
-    ... '''
-    >>> expected = '''
-    ... <outline>
-    ...     <contour>
-    ...         <point x="1" y="1" type="line"/>
-    ...     </contour>
-    ...     <component base="2"/>
-    ...     <contour>
-    ...         <point x="3" y="3" type="line"/>
-    ...     </contour>
-    ...     <component base="4"/>
-    ...     <contour>
-    ...         <point name="anchor1" x="0" y="0" type="move"/>
-    ...     </contour>
-    ...     <contour>
-    ...         <point name="anchor2" x="0" y="0" type="move"/>
-    ...     </contour>
-    ... </outline>
-    ... '''.strip().replace("    ", "\t")
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat1(element, writer)
-    >>> writer.getText() == expected
-    True
     """
     if not len(element):
         return
@@ -1538,119 +784,8 @@ def _normalizeGlifOutlineFormat1(element, writer):
     writer.endElement("outline")
 
 def _normalizeGlifContourFormat1(element):
-    r"""
+    """
     - Don't write unknown subelements.
-
-    empty
-    -----
-    >>> contour = '''
-    ... <contour/>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> _normalizeGlifContourFormat1(element)
-
-    >>> contour = '''
-    ... <contour>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> _normalizeGlifContourFormat1(element)
-
-    point without attributes
-    ------------------------
-    >>> contour = '''
-    ... <contour>
-    ...    <point/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> _normalizeGlifContourFormat1(element)
-
-    unknown child element
-    ---------------------
-    >>> contour = '''
-    ... <contour>
-    ...    <piont type="line" y="0" x="0"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> _normalizeGlifContourFormat1(element)
-
-    unknown point type
-    ------------------
-    >>> contour = '''
-    ... <contour>
-    ...    <point type="invalid" y="0" x="0"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> _normalizeGlifContourFormat1(element)
-
-    implied anchor
-    --------------
-    >>> contour = '''
-    ... <contour>
-    ...    <point type="move" y="0" x="0" name="anchor1"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> sorted(_normalizeGlifContourFormat1(element).items())
-    [('name', 'anchor1'), ('type', 'anchor'), ('x', 0.0), ('y', 0.0)]
-
-    implied anchor with empty name
-    ------------------------------
-    >>> contour = '''
-    ... <contour>
-    ...    <point type="move" y="0" x="0" name=""/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> sorted(_normalizeGlifContourFormat1(element).items())
-    [('name', ''), ('type', 'anchor'), ('x', 0.0), ('y', 0.0)]
-
-    implied anchor without name
-    ---------------------------
-    >>> contour = '''
-    ... <contour>
-    ...    <point type="move" y="0" x="0"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> sorted(_normalizeGlifContourFormat1(element).items())
-    [('type', 'anchor'), ('x', 0.0), ('y', 0.0)]
-
-    normal
-    ------
-    >>> contour = '''
-    ... <contour>
-    ...    <point type="line" y="0" x="0"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> result = _normalizeGlifContourFormat1(element)
-    >>> result["type"]
-    'contour'
-    >>> len(result["points"])
-    1
-    >>> sorted(result["points"][0].items())
-    [('type', 'line'), ('x', 0.0), ('y', 0.0)]
-
-    >>> contour = '''
-    ... <contour>
-    ...    <point type="move" y="0" x="0"/>
-    ...    <point type="line" y="1" x="1"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> result = _normalizeGlifContourFormat1(element)
-    >>> result["type"]
-    'contour'
-    >>> len(result["points"])
-    2
-    >>> sorted(result["points"][0].items())
-    [('type', 'move'), ('x', 0.0), ('y', 0.0)]
-    >>> sorted(result["points"][1].items())
-    [('type', 'line'), ('x', 1.0), ('y', 1.0)]
     """
     # INVALID DATA POSSIBILITY: unknown child element
     # INVALID DATA POSSIBILITY: unknown point type
@@ -1683,137 +818,6 @@ def _normalizeGlifPointAttributesFormat1(element):
     - Don't write subelements.
     - Don't write smooth if undefined.
     - Don't write unknown point types.
-
-    everything
-    ----------
-    >>> point = "<point x='1' y='2.5' type='line' name='test' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('name', 'test'), ('smooth', 'yes'), ('type', 'line'), ('x', 1.0), ('y', 2.5)]
-
-    no x
-    ----
-    >>> point = "<point y='2.5' type='line' name='test' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    []
-
-    no y
-    ----
-    >>> point = "<point x='1' type='line' name='test' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    []
-
-    invalid x
-    ---------
-    >>> point = "<point x='a' y='30'/>"
-    >>> element = ET.fromstring(point)
-    >>> _normalizeGlifPointAttributesFormat1(element)
-
-    invalid y
-    ---------
-    >>> point = "<point x='20' y='b'/>"
-    >>> element = ET.fromstring(point)
-    >>> _normalizeGlifPointAttributesFormat1(element)
-
-    no name
-    -------
-    >>> point = "<point x='1' y='2.5' type='line' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('smooth', 'yes'), ('type', 'line'), ('x', 1.0), ('y', 2.5)]
-
-    empty name
-    ----------
-    >>> point = "<point x='1' y='2.5' type='line' name='' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('name', ''), ('smooth', 'yes'), ('type', 'line'), ('x', 1.0), ('y', 2.5)]
-
-    type and smooth
-    ---------------
-    >>> point = "<point x='1' y='2.5' type='move' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('smooth', 'yes'), ('type', 'move'), ('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='move' smooth='no'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('type', 'move'), ('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='move'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('type', 'move'), ('x', 1.0), ('y', 2.5)]
-
-    >>> point = "<point x='1' y='2.5' type='line' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('smooth', 'yes'), ('type', 'line'), ('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='line' smooth='no'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('type', 'line'), ('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='line'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('type', 'line'), ('x', 1.0), ('y', 2.5)]
-
-    >>> point = "<point x='1' y='2.5' type='curve' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('smooth', 'yes'), ('type', 'curve'), ('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='curve' smooth='no'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('type', 'curve'), ('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='curve'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('type', 'curve'), ('x', 1.0), ('y', 2.5)]
-
-    >>> point = "<point x='1' y='2.5' type='qcurve' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('smooth', 'yes'), ('type', 'qcurve'), ('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='qcurve' smooth='no'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('type', 'qcurve'), ('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='qcurve'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('type', 'qcurve'), ('x', 1.0), ('y', 2.5)]
-
-    >>> point = "<point x='1' y='2.5' type='offcurve' smooth='yes'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='offcurve' smooth='no'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('x', 1.0), ('y', 2.5)]
-    >>> point = "<point x='1' y='2.5' type='offcurve'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('x', 1.0), ('y', 2.5)]
-
-    >>> point = "<point x='1' y='2.5'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('x', 1.0), ('y', 2.5)]
-
-    >>> point = "<point x='1' y='2.5' type='invalid'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    []
-
-    subelement
-    ----------
-    >>> point = "<point x='1' y='2.5'><invalid/></point>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat1(element).items())
-    [('x', 1.0), ('y', 2.5)]
     """
     # INVALID DATA POSSIBILITY: no x defined
     # INVALID DATA POSSIBILITY: no y defined
@@ -1849,26 +853,6 @@ def _normalizeGlifComponentFormat1(element):
     """
     - Don't write if base is undefined.
     - Don't write subelements.
-
-    everything
-    ----------
-    >>> component = "<component base='test' xScale='10' xyScale='2.2' yxScale='3' yScale='4.4' xOffset='5' yOffset='6.6'/>"
-    >>> element = ET.fromstring(component)
-    >>> sorted(_normalizeGlifComponentFormat1(element).items())
-    [('base', 'test'), ('type', 'component'), ('xOffset', 5.0), ('xScale', 10.0), ('xyScale', 2.2), ('yOffset', 6.6), ('yScale', 4.4), ('yxScale', 3.0)]
-
-    no base
-    -------
-    >>> component = "<component xScale='1' xyScale='2.2' yxScale='3' yScale='4.4' xOffset='5' yOffset='6.6'/>"
-    >>> element = ET.fromstring(component)
-    >>> _normalizeGlifComponentFormat1(element)
-
-    subelement
-    ----------
-    >>> component = "<component base='test'><foo/></component>"
-    >>> element = ET.fromstring(component)
-    >>> sorted(_normalizeGlifComponentFormat1(element).items())
-    [('base', 'test'), ('type', 'component')]
     """
     # INVALID DATA POSSIBILITY: no base defined
     # INVALID DATA POSSIBILITY: unknown child element
@@ -1882,34 +866,6 @@ def _normalizeGlifComponentAttributesFormat1(element):
     """
     - Don't write if base is not defined.
     - Don't write default transformation values.
-
-    everything
-    ----------
-    >>> component = "<component base='test' xScale='10' xyScale='2.2' yxScale='3' yScale='4.4' xOffset='5' yOffset='6.6'/>"
-    >>> element = ET.fromstring(component)
-    >>> sorted(_normalizeGlifComponentAttributesFormat1(element).items())
-    [('base', 'test'), ('xOffset', 5.0), ('xScale', 10.0), ('xyScale', 2.2), ('yOffset', 6.6), ('yScale', 4.4), ('yxScale', 3.0)]
-
-    no base
-    -------
-    >>> component = "<component xScale='10' xyScale='2.2' yxScale='3' yScale='4.4' xOffset='5' yOffset='6.6'/>"
-    >>> element = ET.fromstring(component)
-    >>> sorted(_normalizeGlifComponentAttributesFormat1(element).items())
-    []
-
-    no transformation
-    -----------------
-    >>> component = "<component base='test'/>"
-    >>> element = ET.fromstring(component)
-    >>> sorted(_normalizeGlifComponentAttributesFormat1(element).items())
-    [('base', 'test')]
-
-    defaults
-    --------
-    >>> component = "<component base='test' xScale='1' xyScale='0' yxScale='0' yScale='1' xOffset='0' yOffset='0'/>"
-    >>> element = ET.fromstring(component)
-    >>> sorted(_normalizeGlifComponentAttributesFormat1(element).items())
-    [('base', 'test')]
     """
     # INVALID DATA POSSIBILITY: no base defined
     # INVALID DATA POSSIBILITY: duplicate attributes
@@ -1924,68 +880,12 @@ def _normalizeGlifComponentAttributesFormat1(element):
     return attrs
 
 def _normalizeGlifOutlineFormat2(element, writer):
-    r"""
+    """
     - Don't write an empty element.
     - Don't write an empty contour.
     - Don't write an empty component.
     - Retain contour and component order.
     - Don't write unknown subelements.
-
-    empty
-    -----
-    >>> outline = '''
-    ... <outline>
-    ... </outline>
-    ... '''
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat2(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    >>> outline = '''
-    ... <outline>
-    ...     <contour />
-    ...     <component />
-    ... </outline>
-    ... '''
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat2(element, writer)
-    >>> writer.getText() == u''
-    True
-
-    element order
-    -------------
-    >>> outline = '''
-    ... <outline>
-    ...     <contour>
-    ...         <point type="line" y="1" x="1"/>
-    ...     </contour>
-    ...     <component base="2"/>
-    ...     <contour identifier='test'>
-    ...         <point type="line" y="3" x="3"/>
-    ...     </contour>
-    ...     <component base="4"/>
-    ... </outline>
-    ... '''
-    >>> expected = '''
-    ... <outline>
-    ...     <contour>
-    ...         <point x="1" y="1" type="line"/>
-    ...     </contour>
-    ...     <component base="2"/>
-    ...     <contour identifier="test">
-    ...         <point x="3" y="3" type="line"/>
-    ...     </contour>
-    ...     <component base="4"/>
-    ... </outline>
-    ... '''.strip().replace("    ", "\t")
-    >>> element = ET.fromstring(outline)
-    >>> writer = XMLWriter(declaration=None)
-    >>> _normalizeGlifOutlineFormat2(element, writer)
-    >>> writer.getText() == expected
-    True
     """
     outline = []
     for subElement in element:
@@ -2017,74 +917,8 @@ def _normalizeGlifOutlineFormat2(element, writer):
     writer.endElement("outline")
 
 def _normalizeGlifContourFormat2(element):
-    r"""
+    """
     - Don't write unknown subelements.
-
-    empty
-    -----
-    >>> contour = '''
-    ... <contour>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> _normalizeGlifContourFormat2(element)
-
-    point without attributes
-    ------------------------
-    >>> contour = '''
-    ... <contour>
-    ...    <point/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> _normalizeGlifContourFormat2(element)
-
-    unknown child element
-    ---------------------
-    >>> contour = '''
-    ... <contour>
-    ...    <piont type="line" y="0" x="0"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> _normalizeGlifContourFormat2(element)
-
-    normal
-    ------
-    >>> contour = '''
-    ... <contour identifier="test">
-    ...    <point type="line" y="0" x="0"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> result = _normalizeGlifContourFormat2(element)
-    >>> result["type"]
-    'contour'
-    >>> result["identifier"]
-    'test'
-    >>> len(result["points"])
-    1
-    >>> sorted(result["points"][0].items())
-    [('type', 'line'), ('x', 0.0), ('y', 0.0)]
-
-    >>> contour = '''
-    ... <contour identifier="test">
-    ...    <point type="move" y="0" x="0"/>
-    ...    <point type="line" y="1" x="1"/>
-    ... </contour>
-    ... '''
-    >>> element = ET.fromstring(contour)
-    >>> result = _normalizeGlifContourFormat2(element)
-    >>> result["type"]
-    'contour'
-    >>> result["identifier"]
-    'test'
-    >>> len(result["points"])
-    2
-    >>> sorted(result["points"][0].items())
-    [('type', 'move'), ('x', 0.0), ('y', 0.0)]
-    >>> sorted(result["points"][1].items())
-    [('type', 'line'), ('x', 1.0), ('y', 1.0)]
     """
     # INVALID DATA POSSIBILITY: unknown child element
     # INVALID DATA POSSIBILITY: unknown point type
@@ -2108,13 +942,6 @@ def _normalizeGlifContourFormat2(element):
 def _normalizeGlifPointAttributesFormat2(element):
     """
     - Follow same rules as Format 1, but allow an identifier attribute.
-
-    everything
-    ----------
-    >>> point = "<point x='1' y='2.5' type='line' name='test' smooth='yes' identifier='TEST'/>"
-    >>> element = ET.fromstring(point)
-    >>> sorted(_normalizeGlifPointAttributesFormat2(element).items())
-    [('identifier', 'TEST'), ('name', 'test'), ('smooth', 'yes'), ('type', 'line'), ('x', 1.0), ('y', 2.5)]
     """
     attrs = _normalizeGlifPointAttributesFormat1(element)
     identifier = element.attrib.get("identifier")
@@ -2137,13 +964,6 @@ def _normalizeGlifComponentFormat2(element):
 def _normalizeGlifComponentAttributesFormat2(element):
     """
     - Follow same rules as Format 1, but allow an identifier attribute.
-
-    everything
-    ----------
-    >>> component = "<component base='test' xScale='10' xyScale='2.2' yxScale='3' yScale='4.4' xOffset='5' yOffset='6.6' identifier='test'/>"
-    >>> element = ET.fromstring(component)
-    >>> sorted(_normalizeGlifComponentAttributesFormat2(element).items())
-    [('base', 'test'), ('identifier', 'test'), ('xOffset', 5.0), ('xScale', 10.0), ('xyScale', 2.2), ('yOffset', 6.6), ('yScale', 4.4), ('yxScale', 3.0)]
     """
     attrs = _normalizeGlifComponentAttributesFormat1(element)
     identifier = element.attrib.get("identifier")
@@ -2163,36 +983,6 @@ _glifDefaultTransformation = dict(
 def _normalizeGlifTransformation(element):
     """
     - Don't write default values.
-
-    empty
-    -----
-    >>> element = ET.fromstring("<test/>")
-    >>> _normalizeGlifTransformation(element)
-    {}
-
-    default
-    -------
-    >>> element = ET.fromstring("<test xScale='1' xyScale='0' yxScale='0' yScale='1' xOffset='0' yOffset='0'/>")
-    >>> _normalizeGlifTransformation(element)
-    {}
-
-    non-default
-    -----------
-    >>> element = ET.fromstring("<test xScale='2' xyScale='3' yxScale='4' yScale='5' xOffset='6' yOffset='7'/>")
-    >>> sorted(_normalizeGlifTransformation(element).items())
-    [('xOffset', 6.0), ('xScale', 2.0), ('xyScale', 3.0), ('yOffset', 7.0), ('yScale', 5.0), ('yxScale', 4.0)]
-
-    invalid value
-    -------------
-    >>> element = ET.fromstring("<test xScale='a'/>")
-    >>> _normalizeGlifTransformation(element)
-    {}
-
-    unknown attribute
-    -----------------
-    >>> element = ET.fromstring("<test rotate='1'/>")
-    >>> _normalizeGlifTransformation(element)
-    {}
     """
     attrs = {}
     for attr, default in _glifDefaultTransformation.items():
@@ -2209,17 +999,6 @@ def _normalizeColorString(value):
     """
     - Write the string as comma separated numbers, folowing the
       number normalization rules.
-
-    >>> _normalizeColorString("")
-    >>> _normalizeColorString("1,1,1")
-    >>> _normalizeColorString("1,1,1,1")
-    '1,1,1,1'
-    >>> _normalizeColorString(".1,.1,.1,.1")
-    '0.1,0.1,0.1,0.1'
-    >>> _normalizeColorString("1,1,1,a")
-    >>> _normalizeColorString("1,1,-1,1")
-    >>> _normalizeColorString("1,2,1,1")
-    >>> _normalizeColorString(",,,")
     """
     # INVALID DATA POSSIBILITY: bad color string
     # INVALID DATA POSSIBILITY: value < 0 or > 1
@@ -2253,41 +1032,6 @@ def _dateToString(data):
                                                data.minute, data.second)
 
 def _convertPlistElementToObject(element):
-    """
-    >>> element = ET.fromstring("<array></array>")
-    >>> _convertPlistElementToObject(element)
-    []
-    >>> element = ET.fromstring("<array><integer>0</integer><real>.1</real></array>")
-    >>> _convertPlistElementToObject(element)
-    [0, 0.1]
-    >>> element = ET.fromstring("<dict></dict>")
-    >>> _convertPlistElementToObject(element)
-    {}
-    >>> element = ET.fromstring("<dict><key>foo</key><string>bar</string></dict>")
-    >>> _convertPlistElementToObject(element)
-    {'foo': 'bar'}
-    >>> element = ET.fromstring("<string>foo</string>")
-    >>> _convertPlistElementToObject(element)
-    'foo'
-    >>> element = ET.fromstring("<date>2015-07-05T22:16:18Z</date>")
-    >>> _convertPlistElementToObject(element)
-    datetime.datetime(2015, 7, 5, 22, 16, 18)
-    >>> element = ET.fromstring("<true />")
-    >>> _convertPlistElementToObject(element)
-    True
-    >>> element = ET.fromstring("<false />")
-    >>> _convertPlistElementToObject(element)
-    False
-    >>> element = ET.fromstring("<real>1.1</real>")
-    >>> _convertPlistElementToObject(element)
-    1.1
-    >>> element = ET.fromstring("<integer>1</integer>")
-    >>> _convertPlistElementToObject(element)
-    1
-    >>> element = ET.fromstring("<data>YWJj</data>")
-    >>> _convertPlistElementToObject(element) == plistlib.Data(b'abc')
-    True
-    """
     # INVALID DATA POSSIBILITY: invalid value string
     obj = None
     tag = element.tag
@@ -2432,201 +1176,6 @@ class XMLWriter(object):
     # property list
 
     def propertyListObject(self, data):
-        """
-        Array
-        -----
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject([])
-        >>> writer.getText() == u'<array>\\n</array>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(["a"])
-        >>> writer.getText() == u'<array>\\n\\t<string>a</string>\\n</array>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject([None])
-        >>> writer.getText() == u'<array>\\n</array>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject([False])
-        >>> writer.getText() == u'<array>\\n\\t<false/>\\n</array>'
-        True
-
-        Dict
-        ----
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject({})
-        >>> writer.getText() == u'<dict>\\n</dict>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject({"a" : "b"})
-        >>> writer.getText() == u'<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject({"a" : 20.2})
-        >>> writer.getText() == u'<dict>\\n\\t<key>a</key>\\n\\t<real>20.2</real>\\n</dict>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject({"a" : 20.0})
-        >>> writer.getText() == u'<dict>\\n\\t<key>a</key>\\n\\t<integer>20</integer>\\n</dict>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject({"" : ""})
-        >>> writer.getText() == u'<dict>\\n\\t<key></key>\\n\\t<string></string>\\n</dict>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject({None : ""})
-        >>> writer.getText() == u'<dict>\\n\\t<key/>\\n\\t<string></string>\\n</dict>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject({"" : None})
-        >>> writer.getText() == u'<dict>\\n\\t<key></key>\\n</dict>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject({None : None})
-        >>> writer.getText() == u'<dict>\\n\\t<key/>\\n</dict>'
-        True
-
-        String
-        ------
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject("a")
-        >>> writer.getText() == u'<string>a</string>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject("1.000")
-        >>> writer.getText() == u'<string>1.000</string>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject("")
-        >>> writer.getText() == u'<string></string>'
-        True
-
-        Boolean
-        -------
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(True)
-        >>> writer.getText() == u'<true/>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(False)
-        >>> writer.getText() == u'<false/>'
-        True
-
-        Float
-        -----
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(1.1)
-        >>> writer.getText() == u'<real>1.1</real>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(-1.1)
-        >>> writer.getText() == u'<real>-1.1</real>'
-        True
-
-        Integer
-        -------
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(1.0)
-        >>> writer.getText() == u'<integer>1</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(-1.0)
-        >>> writer.getText() == u'<integer>-1</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(0.0)
-        >>> writer.getText() == u'<integer>0</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(-0.0)
-        >>> writer.getText() == u'<integer>0</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(1)
-        >>> writer.getText() == u'<integer>1</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(-1)
-        >>> writer.getText() == u'<integer>-1</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(+1)
-        >>> writer.getText() == u'<integer>1</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(0)
-        >>> writer.getText() == u'<integer>0</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(-0)
-        >>> writer.getText() == u'<integer>0</integer>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(2015-1-1)
-        >>> writer.getText() == u'<integer>2013</integer>'
-        True
-
-        Date
-        ----
-        >>> writer = XMLWriter(declaration=None)
-        >>> date = datetime.datetime(2012, 9, 1)
-        >>> writer.propertyListObject(date)
-        >>> writer.getText() == u'<date>2012-09-01T00:00:00Z</date>'
-        True
-
-        >>> writer = XMLWriter(declaration=None)
-        >>> date = datetime.datetime(2009, 11, 29, 16, 31, 53)
-        >>> writer.propertyListObject(date)
-        >>> writer.getText() == u'<date>2009-11-29T16:31:53Z</date>'
-        True
-
-        Data
-        ----
-        >>> writer = XMLWriter(declaration=None)
-        >>> data = plistlib.Data(tobytes("abc"))
-        >>> writer.propertyListObject(data)
-        >>> writer.getText() == u'<data>\\n\\tYWJj\\n</data>'
-        True
-
-        None
-        ----
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(None)
-        >>> writer.getText() == u''
-        True
-
-        Unknown data type
-        -----------------
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.propertyListObject(1.0j) # doctest: +ELLIPSIS
-        Traceback (most recent call last):
-            ...
-        UFONormalizerError: Unknown data type in property list: <... 'complex'>
-        """
         if data is None:
             return
         if isinstance(data, (list, tuple)):
@@ -2702,11 +1251,6 @@ class XMLWriter(object):
         - Sort unknown attributes in alphabetical order and
           place them after the known attributes.
         - Format as space separated name="value".
-
-        >>> attrs = dict(a="blah", x=1, y=2.1)
-        >>> writer = XMLWriter(declaration=None)
-        >>> writer.attributesToString(attrs)
-        'x="1" y="2.1" a="blah"'
         """
         sorter = [
             (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in attrs.items()
@@ -2721,97 +1265,17 @@ class XMLWriter(object):
 
 
 def xmlEscapeText(text):
-    r"""
-    NOTE: In Python 2.x, the doctest module is not robust enough to deal with non-ASCII
-          characters; to make the tests work, the doctest string needs to be raw,
-          and the results need to be escaped hexadecimal values of each byte.
-          In Python 3.x all strings are Unicode-encoded by default, which allows for
-          the doctests results to use any Unicode character.
-
-    >>> xmlEscapeText(u"&") == u"&amp;"
-    True
-    >>> xmlEscapeText(u"<") == u"&lt;"
-    True
-    >>> xmlEscapeText(u">") == u"&gt;"
-    True
-    >>> xmlEscapeText(u"a") == u"a"
-    True
-    >>> xmlEscapeText(u"ä") == u"ä"
-    True
-    >>> xmlEscapeText(u"ā") == u"ā"
-    True
-    >>> xmlEscapeText(u"𐐀") == u"𐐀"
-    True
-    >>> xmlEscapeText(u"©") == u"©"
-    True
-    >>> xmlEscapeText(u"—") == u"—"
-    True
-    >>> xmlEscapeText(u"1") == u"1"
-    True
-    >>> xmlEscapeText(u"1.0") == u"1.0"
-    True
-    >>> xmlEscapeText(u"'") == u"'"
-    True
-    >>> xmlEscapeText(u"/") == u"/"
-    True
-    >>> xmlEscapeText(u"\\") == u"\\"
-    True
-    >>> xmlEscapeText(u"\\r") == u"\\r"
-    True
-    """
     text = text.replace("&", "&amp;")
     text = text.replace("<", "&lt;")
     text = text.replace(">", "&gt;")
     return text
 
 def xmlEscapeAttribute(text):
-    r"""
-    >>> xmlEscapeAttribute('"')
-    '&quot;'
-    >>> xmlEscapeAttribute("'")
-    "'"
-    >>> xmlEscapeAttribute("abc")
-    'abc'
-    >>> xmlEscapeAttribute("123")
-    '123'
-    >>> xmlEscapeAttribute("/")
-    '/'
-    >>> xmlEscapeAttribute("\\")
-    '\\'
-    """
     text = xmlEscapeText(text)
     text = text.replace("\"", "&quot;")
     return text
 
 def xmlConvertValue(value):
-    """
-    >>> xmlConvertValue(0.0)
-    '0'
-    >>> xmlConvertValue(-0.0)
-    '0'
-    >>> xmlConvertValue(2.0)
-    '2'
-    >>> xmlConvertValue(-2.0)
-    '-2'
-    >>> xmlConvertValue(2.05)
-    '2.05'
-    >>> xmlConvertValue(2)
-    '2'
-    >>> xmlConvertValue(0.2)
-    '0.2'
-    >>> xmlConvertValue("0.0")
-    '0.0'
-    >>> xmlConvertValue(1e-5)
-    '0.00001'
-    >>> xmlConvertValue(1e-10)
-    '0.0000000001'
-    >>> xmlConvertValue(1e-11)
-    '0'
-    >>> xmlConvertValue(1e+5)
-    '100000'
-    >>> xmlConvertValue(1e+10)
-    '10000000000'
-    """
     if isinstance(value, float):
         return xmlConvertFloat(value)
     elif isinstance(value, int):
@@ -2820,18 +1284,6 @@ def xmlConvertValue(value):
     return value
 
 def xmlConvertFloat(value):
-    """
-    >>> xmlConvertFloat(1.0)
-    '1'
-    >>> xmlConvertFloat(1.01)
-    '1.01'
-    >>> xmlConvertFloat(1.0000000001)
-    '1.0000000001'
-    >>> xmlConvertFloat(1.00000000001)
-    '1'
-    >>> xmlConvertFloat(1.00000000009)
-    '1.0000000001'
-    """
     value = "%.10f" % value
     value = value.rstrip("0")
     if value[-1] == ".":
@@ -2839,42 +1291,6 @@ def xmlConvertFloat(value):
     return value
 
 def xmlConvertInt(value):
-    """
-    >>> xmlConvertInt(1)
-    '1'
-    >>> xmlConvertInt(-1)
-    '-1'
-    >>> xmlConvertInt(- 1)
-    '-1'
-    >>> xmlConvertInt(0)
-    '0'
-    >>> xmlConvertInt(-0)
-    '0'
-    >>> xmlConvertInt(0o01)
-    '1'
-    >>> xmlConvertInt(- 0o01)
-    '-1'
-    >>> xmlConvertInt(0o000001)
-    '1'
-    >>> xmlConvertInt(0o0000000000000001)
-    '1'
-    >>> xmlConvertInt(1000000000000001)
-    '1000000000000001'
-    >>> xmlConvertInt(0o000001000001)
-    '262145'
-    >>> xmlConvertInt(0o00000100000)
-    '32768'
-    >>> xmlConvertInt(0o0000010)
-    '8'
-    >>> xmlConvertInt(-0o0000010)
-    '-8'
-    >>> xmlConvertInt(0o0000020)
-    '16'
-    >>> xmlConvertInt(0o0000030)
-    '24'
-    >>> xmlConvertInt(65536)
-    '65536'
-    """
     return str(value)
 
 # ---------------
@@ -3109,59 +1525,13 @@ reservedFileNames = "CON PRN AUX CLOCK$ NUL A:-Z: COM1".lower().split(" ")
 reservedFileNames += "LPT1 LPT2 LPT3 COM2 COM3 COM4".lower().split(" ")
 maxFileNameLength = 255
 
+class NameTranslationError(Exception):
+    pass
+
 def userNameToFileName(userName, existing=[], prefix="", suffix=""):
     """
     existing should be a case-insensitive list
     of all existing file names.
-
-    >>> userNameToFileName(u"a") == u"a"
-    True
-    >>> userNameToFileName(u"A") == u"A_"
-    True
-    >>> userNameToFileName(u"AE") == u"A_E_"
-    True
-    >>> userNameToFileName(u"Ae") == u"A_e"
-    True
-    >>> userNameToFileName(u"ae") == u"ae"
-    True
-    >>> userNameToFileName(u"aE") == u"aE_"
-    True
-    >>> userNameToFileName(u"a.alt") == u"a.alt"
-    True
-    >>> userNameToFileName(u"A.alt") == u"A_.alt"
-    True
-    >>> userNameToFileName(u"A.Alt") == u"A_.A_lt"
-    True
-    >>> userNameToFileName(u"A.aLt") == u"A_.aL_t"
-    True
-    >>> userNameToFileName(u"A.alT") == u"A_.alT_"
-    True
-    >>> userNameToFileName(u"T_H") == u"T__H_"
-    True
-    >>> userNameToFileName(u"T_h") == u"T__h"
-    True
-    >>> userNameToFileName(u"t_h") == u"t_h"
-    True
-    >>> userNameToFileName(u"F_F_I") == u"F__F__I_"
-    True
-    >>> userNameToFileName(u"f_f_i") == u"f_f_i"
-    True
-    >>> userNameToFileName(u"Aacute_V.swash") == u"A_acute_V_.swash"
-    True
-    >>> userNameToFileName(u".notdef") == u"_notdef"
-    True
-    >>> userNameToFileName(u"con") == u"_con"
-    True
-    >>> userNameToFileName(u"CON") == u"C_O_N_"
-    True
-    >>> userNameToFileName(u"con.alt") == u"_con.alt"
-    True
-    >>> userNameToFileName(u"alt.con") == u"alt._con"
-    True
-    >>> userNameToFileName(u"a*") == u"a_"
-    True
-    >>> userNameToFileName(u"a", [u"a"]) == u"a000000000000001"
-    True
     """
     # the incoming name must be a unicode string
     assert isinstance(userName, unicode), "The value for userName must be a unicode string."
@@ -3202,35 +1572,8 @@ def userNameToFileName(userName, existing=[], prefix="", suffix=""):
 
 def handleClash1(userName, existing=[], prefix="", suffix=""):
     """
-    existing should be a case-insensitive list
+    existing must be a case-insensitive list
     of all existing file names.
-
-    >>> prefix = ("0" * 5) + "."
-    >>> suffix = "." + ("0" * 10)
-    >>> existing = ["a" * 5]
-
-    >>> e = list(existing)
-    >>> handleClash1(userName="A" * 5, existing=e,
-    ...     prefix=prefix, suffix=suffix)
-    '00000.AAAAA000000000000001.0000000000'
-
-    >>> e = list(existing)
-    >>> e.append(prefix + "aaaaa" + "1".zfill(15) + suffix)
-    >>> handleClash1(userName="A" * 5, existing=e,
-    ...     prefix=prefix, suffix=suffix)
-    '00000.AAAAA000000000000002.0000000000'
-
-    >>> e = list(existing)
-    >>> e.append(prefix + "AAAAA" + "2".zfill(15) + suffix)
-    >>> handleClash1(userName="A" * 5, existing=e,
-    ...     prefix=prefix, suffix=suffix)
-    '00000.AAAAA000000000000001.0000000000'
-
-    Max file length
-    ---------------
-    >>> handleClash1(userName="ABCDEFGHIJKLMNOPQRSTUVWX_" * 10,
-    ...     prefix=prefix, suffix=suffix) # doctest: +ELLIPSIS
-    '00000.ABCDEFGHIJKLM...NOPQRSTUVW000000000000001.0000000000'
     """
     # if the prefix length + user name length + suffix length + 15 is at
     # or past the maximum length, slice 15 characters off of the user name
@@ -3261,26 +1604,8 @@ def handleClash1(userName, existing=[], prefix="", suffix=""):
 
 def handleClash2(existing=[], prefix="", suffix=""):
     """
-    existing should be a case-insensitive list
+    existing must be a case-insensitive list
     of all existing file names.
-
-    >>> prefix = ("0" * 5) + "."
-    >>> suffix = "." + ("0" * 10)
-    >>> existing = [prefix + str(i) + suffix for i in range(100)]
-
-    >>> e = list(existing)
-    >>> handleClash2(existing=e, prefix=prefix, suffix=suffix)
-    '00000.100.0000000000'
-
-    >>> e = list(existing)
-    >>> e.remove(prefix + "1" + suffix)
-    >>> handleClash2(existing=e, prefix=prefix, suffix=suffix)
-    '00000.1.0000000000'
-
-    >>> e = list(existing)
-    >>> e.remove(prefix + "2" + suffix)
-    >>> handleClash2(existing=e, prefix=prefix, suffix=suffix)
-    '00000.2.0000000000'
     """
     # calculate the longest possible string
     maxLength = maxFileNameLength - len(prefix) - len(suffix)
@@ -3311,9 +1636,12 @@ def _runProfile(outPath):
     normalizeUFO(outPath)
 
 def runTests():
-    # doctests
-    import doctest
-    doctest.testmod()
+    # unit tests
+    import unittest
+    import sys
+    # unittest.main() will try parsing arguments, "-t" in this case
+    sys.argv = sys.argv[:1]
+    unittest.main("test_ufonormalizer", exit=False, verbosity=2)
 
     # test file searching
     paths = []
