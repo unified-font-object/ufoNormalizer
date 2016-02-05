@@ -374,11 +374,11 @@ class UFONormalizerTest(unittest.TestCase):
         glifFolderPath = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             'data', 'glif')
-        os.chdir(glifFolderPath)
         for i in [1, 2]:
             glifFileName = 'format%s.glif' % i
+            glifFilePath = os.path.join(glifFolderPath, glifFileName)
             normalizeGLIF(glifFolderPath, glifFileName)
-            glifFile = open(glifFileName, 'r')
+            glifFile = open(glifFilePath, 'r')
             glifFileData = glifFile.read()
             glifFile.close()
             self.assertEqual(glifFileData, glifFormat[i])
