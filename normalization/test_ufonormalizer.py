@@ -1309,162 +1309,177 @@ class UFONormalizerTest(unittest.TestCase):
                          plistlib.Data(b'abc'))
 
 
-class XMLWriterTest(object):
+class XMLWriterTest(unittest.TestCase):
+    def __init__(self, methodName):
+        unittest.TestCase.__init__(self, methodName)
+        # Python 3 renamed assertRaisesRegexp to assertRaisesRegex.
+        if not hasattr(self, "assertRaisesRegex"):
+            self.assertRaisesRegex = self.assertRaisesRegexp
 
     def test_propertyListObject_array(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject([])
-        self.assetEqual(writer.getText(), '<array>\\n</array>')
+        self.assertEqual(writer.getText(), '<array>\n</array>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(["a"])
-        self.assetEqual(writer.getText(),
-                        '<array>\\n\\t<string>a</string>\\n</array>')
+        self.assertEqual(writer.getText(),
+                        '<array>\n\t<string>a</string>\n</array>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject([None])
-        self.assetEqual(writer.getText(), '<array>\\n</array>')
+        self.assertEqual(writer.getText(), '<array>\n</array>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject([False])
-        self.assetEqual(writer.getText(), '<array>\\n\\t<false/>\\n</array>')
+        self.assertEqual(writer.getText(), '<array>\n\t<false/>\n</array>')
 
     def test_propertyListObject_dict(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({})
-        self.assetEqual(writer.getText(), '<dict>\\n</dict>')
+        self.assertEqual(writer.getText(), '<dict>\n</dict>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({"a": "b"})
-        self.assetEqual(
+        self.assertEqual(
             writer.getText(),
-            '<dict>\\n\\t<key>a</key>\\n\\t<string>b</string>\\n</dict>')
+            '<dict>\n\t<key>a</key>\n\t<string>b</string>\n</dict>')
+
+        writer = XMLWriter(declaration=None)
+        writer.propertyListObject({"a&b": "b&a"})
+        self.assertEqual(
+            writer.getText(),
+            '<dict>\n\t<key>a&amp;b</key>\n\t<string>b&amp;a</string>\n</dict>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({"a": 20.2})
-        self.assetEqual(
+        self.assertEqual(
             writer.getText(),
-            '<dict>\\n\\t<key>a</key>\\n\\t<real>20.2</real>\\n</dict>')
+            '<dict>\n\t<key>a</key>\n\t<real>20.2</real>\n</dict>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({"a": 20.0})
-        self.assetEqual(
+        self.assertEqual(
             writer.getText(),
-            '<dict>\\n\\t<key>a</key>\\n\\t<integer>20</integer>\\n</dict>')
+            '<dict>\n\t<key>a</key>\n\t<integer>20</integer>\n</dict>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({"": ""})
-        self.assetEqual(
+        self.assertEqual(
             writer.getText(),
-            '<dict>\\n\\t<key></key>\\n\\t<string></string>\\n</dict>')
+            '<dict>\n\t<key></key>\n\t<string></string>\n</dict>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({None: ""})
-        self.assetEqual(
+        self.assertEqual(
             writer.getText(),
-            '<dict>\\n\\t<key/>\\n\\t<string></string>\\n</dict>')
+            '<dict>\n\t<key/>\n\t<string></string>\n</dict>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({"": None})
-        self.assetEqual(writer.getText(), '<dict>\\n\\t<key></key>\\n</dict>')
+        self.assertEqual(writer.getText(), '<dict>\n\t<key></key>\n</dict>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject({None: None})
-        self.assetEqual(writer.getText(), '<dict>\\n\\t<key/>\\n</dict>')
+        self.assertEqual(writer.getText(), '<dict>\n\t<key/>\n</dict>')
 
     def test_propertyListObject_string(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject("a")
-        self.assetEqual(writer.getText(), '<string>a</string>')
+        self.assertEqual(writer.getText(), '<string>a</string>')
+
+        writer = XMLWriter(declaration=None)
+        writer.propertyListObject("&")
+        self.assertEqual(writer.getText(), '<string>&amp;</string>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject("1.000")
-        self.assetEqual(writer.getText(), '<string>1.000</string>')
+        self.assertEqual(writer.getText(), '<string>1.000</string>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject("")
-        self.assetEqual(writer.getText(), '<string></string>')
+        self.assertEqual(writer.getText(), '<string></string>')
 
     def test_propertyListObject_boolean(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(True)
-        self.assetEqual(writer.getText(), '<true/>')
+        self.assertEqual(writer.getText(), '<true/>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(False)
-        self.assetEqual(writer.getText(), '<false/>')
+        self.assertEqual(writer.getText(), '<false/>')
 
     def test_propertyListObject_float(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(1.1)
-        self.assetEqual(writer.getText(), '<real>1.1</real>')
+        self.assertEqual(writer.getText(), '<real>1.1</real>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(-1.1)
-        self.assetEqual(writer.getText(), '<real>-1.1</real>')
+        self.assertEqual(writer.getText(), '<real>-1.1</real>')
 
     def test_propertyListObject_integer(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(1.0)
-        self.assetEqual(writer.getText(), '<integer>1</integer>')
+        self.assertEqual(writer.getText(), '<integer>1</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(-1.0)
-        self.assetEqual(writer.getText(), '<integer>-1</integer>')
+        self.assertEqual(writer.getText(), '<integer>-1</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(0.0)
-        self.assetEqual(writer.getText(), '<integer>0</integer>')
+        self.assertEqual(writer.getText(), '<integer>0</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(-0.0)
-        self.assetEqual(writer.getText(), '<integer>0</integer>')
+        self.assertEqual(writer.getText(), '<integer>0</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(1)
-        self.assetEqual(writer.getText(), '<integer>1</integer>')
+        self.assertEqual(writer.getText(), '<integer>1</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(-1)
-        self.assetEqual(writer.getText(), '<integer>-1</integer>')
+        self.assertEqual(writer.getText(), '<integer>-1</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(+1)
-        self.assetEqual(writer.getText(), '<integer>1</integer>')
+        self.assertEqual(writer.getText(), '<integer>1</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(0)
-        self.assetEqual(writer.getText(), '<integer>0</integer>')
+        self.assertEqual(writer.getText(), '<integer>0</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(-0)
-        self.assetEqual(writer.getText(), '<integer>0</integer>')
+        self.assertEqual(writer.getText(), '<integer>0</integer>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(2015-1-1)
-        self.assetEqual(writer.getText(), '<integer>2013</integer>')
+        self.assertEqual(writer.getText(), '<integer>2013</integer>')
 
     def test_propertyListObject_date(self):
         writer = XMLWriter(declaration=None)
         date = datetime.datetime(2012, 9, 1)
         writer.propertyListObject(date)
-        self.assetEqual(writer.getText(), '<date>2012-09-01T00:00:00Z</date>')
+        self.assertEqual(writer.getText(), '<date>2012-09-01T00:00:00Z</date>')
 
         writer = XMLWriter(declaration=None)
         date = datetime.datetime(2009, 11, 29, 16, 31, 53)
         writer.propertyListObject(date)
-        self.assetEqual(writer.getText(), '<date>2009-11-29T16:31:53Z</date>')
+        self.assertEqual(writer.getText(), '<date>2009-11-29T16:31:53Z</date>')
 
     def test_propertyListObject_data(self):
         writer = XMLWriter(declaration=None)
         data = plistlib.Data(tobytes("abc"))
         writer.propertyListObject(data)
-        self.assetEqual(writer.getText(), '<data>\\n\\tYWJj\\n</data>')
+        self.assertEqual(writer.getText(), '<data>\n\tYWJj\n</data>')
 
     def test_propertyListObject_none(self):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(None)
-        self.assetEqual(writer.getText(), '')
+        self.assertEqual(writer.getText(), '')
 
     def test_propertyListObject_unknown_data_type(self):
         writer = XMLWriter(declaration=None)
@@ -1481,21 +1496,21 @@ class XMLWriterTest(object):
             'x="1" y="2.1" a="blah"')
 
     def test_xmlEscapeText(self):
-        self.assertEqual(xmlEscapeText("&") == "&amp;")
-        self.assertEqual(xmlEscapeText("<") == "&lt;")
-        self.assertEqual(xmlEscapeText(">") == "&gt;")
-        self.assertEqual(xmlEscapeText("a") == "a")
-        self.assertEqual(xmlEscapeText("ä") == "ä")
-        self.assertEqual(xmlEscapeText("ā") == "ā")
-        self.assertEqual(xmlEscapeText("𐐀") == "𐐀")
-        self.assertEqual(xmlEscapeText("©") == "©")
-        self.assertEqual(xmlEscapeText("—") == "—")
-        self.assertEqual(xmlEscapeText("1") == "1")
-        self.assertEqual(xmlEscapeText("1.0") == "1.0")
-        self.assertEqual(xmlEscapeText("'") == "'")
-        self.assertEqual(xmlEscapeText("/") == "/")
-        self.assertEqual(xmlEscapeText("\\") == "\\")
-        self.assertEqual(xmlEscapeText("\\r") == "\\r")
+        self.assertEqual(xmlEscapeText("&"), "&amp;")
+        self.assertEqual(xmlEscapeText("<"), "&lt;")
+        self.assertEqual(xmlEscapeText(">"), "&gt;")
+        self.assertEqual(xmlEscapeText("a"), "a")
+        self.assertEqual(xmlEscapeText("ä"), "ä")
+        self.assertEqual(xmlEscapeText("ā"), "ā")
+        self.assertEqual(xmlEscapeText("𐐀"), "𐐀")
+        self.assertEqual(xmlEscapeText("©"), "©")
+        self.assertEqual(xmlEscapeText("—"), "—")
+        self.assertEqual(xmlEscapeText("1"), "1")
+        self.assertEqual(xmlEscapeText("1.0"), "1.0")
+        self.assertEqual(xmlEscapeText("'"), "'")
+        self.assertEqual(xmlEscapeText("/"), "/")
+        self.assertEqual(xmlEscapeText("\\"), "\\")
+        self.assertEqual(xmlEscapeText("\r"), "\r")
 
     def test_xmlEscapeAttribute(self):
         self.assertEqual(xmlEscapeAttribute('"'), '&quot;')
