@@ -1360,8 +1360,15 @@ def subpathWriteFile(data, ufoPath, *subpath):
     path = subpathJoin(ufoPath, *subpath)
     if subpathExists(ufoPath, *subpath):
         existing = subpathReadFile(ufoPath, *subpath)
+
+        if type(data) != type(existing):
+            if not isinstance(data, unicode):
+                data = unicode(data, "utf-8")
+            if not isinstance(existing, unicode):
+                existing = unicode(existing, "utf-8")
     else:
         existing = None
+
     if data != existing:
         f = open(path, "wb")
         f.write(tobytes(data))
