@@ -1291,8 +1291,12 @@ class UFONormalizerTest(unittest.TestCase):
         self.assertEqual(_convertPlistElementToObject(element), {})
         element = ET.fromstring("<dict><key>foo</key><string>bar</string></dict>")
         self.assertEqual(_convertPlistElementToObject(element), {'foo': 'bar'})
+        element = ET.fromstring("<dict><key>A&amp;B</key><string>B&amp;A</string></dict>")
+        self.assertEqual(_convertPlistElementToObject(element), {'A&amp;B': 'B&amp;A'})
         element = ET.fromstring("<string>foo</string>")
         self.assertEqual(_convertPlistElementToObject(element), 'foo')
+        element = ET.fromstring("<string>&amp;</string>")
+        self.assertEqual(_convertPlistElementToObject(element), '&amp;')
         element = ET.fromstring("<date>2015-07-05T22:16:18Z</date>")
         self.assertEqual(_convertPlistElementToObject(element),
                          datetime.datetime(2015, 7, 5, 22, 16, 18))

@@ -1044,11 +1044,11 @@ def _convertPlistElementToObject(element):
         key = None
         for subElement in element:
             if subElement.tag == "key":
-                key = subElement.text
+                key = xmlEscapeText(subElement.text)
             else:
                 obj[key] = _convertPlistElementToObject(subElement)
     elif tag == "string":
-        return element.text
+        return xmlEscapeText(element.text)
     elif tag == "data":
         return plistlib.Data.fromBase64(element.text)
     elif tag == "date":
@@ -1211,12 +1211,12 @@ class XMLWriter(object):
     def _plistDict(self, data):
         self.beginElement("dict")
         for key, value in sorted(data.items()):
-            self.simpleElement("key", value=key)
+            self.simpleElement("key", value=xmlEscapeText(key))
             self.propertyListObject(value)
         self.endElement("dict")
 
     def _plistString(self, data):
-        self.simpleElement("string", value=data)
+        self.simpleElement("string", value=xmlEscapeText(data))
 
     def _plistBoolean(self, data):
         if data:
@@ -1265,9 +1265,10 @@ class XMLWriter(object):
 
 
 def xmlEscapeText(text):
-    text = text.replace("&", "&amp;")
-    text = text.replace("<", "&lt;")
-    text = text.replace(">", "&gt;")
+    if text:
+        text = text.replace("&", "&amp;")
+        text = text.replace("<", "&lt;")
+        text = text.replace(">", "&gt;")
     return text
 
 def xmlEscapeAttribute(text):
