@@ -11,10 +11,13 @@ from io import open
 from xml.etree import cElementTree as ET
 from ufonormalizer import (
     normalizeGLIF, normalizeGlyphsDirectoryNames, normalizeGlyphNames,
-    subpathJoin, subpathReadPlist, subpathWriteFile, subpathWritePlist,
-    UFONormalizerError, XMLWriter, tobytes, userNameToFileName, handleClash1,
-    handleClash2, xmlEscapeText, xmlEscapeAttribute, xmlConvertValue,
-    xmlConvertFloat, xmlConvertInt,
+    subpathJoin, subpathSplit, subpathExists, subpathReadFile,
+    subpathReadPlist, subpathWriteFile, subpathWritePlist, subpathRenameFile,
+    subpathRenameDirectory, subpathRenameDirectory, subpathRemoveFile,
+    subpathGetModTime, subpathNeedsRefresh, modTimeLibKey, storeModTimes,
+    readModTimes, UFONormalizerError, XMLWriter,
+    tobytes, userNameToFileName, handleClash1, handleClash2, xmlEscapeText,
+    xmlEscapeAttribute, xmlConvertValue, xmlConvertFloat, xmlConvertInt,
     _normalizeGlifAnchor, _normalizeGlifGuideline, _normalizeGlifLib,
     _normalizeGlifNote, _normalizeFontInfoGuidelines, _normalizeGlifUnicode,
     _normalizeGlifAdvance, _normalizeGlifImage, _normalizeDictGuideline,
@@ -25,16 +28,19 @@ from ufonormalizer import (
     _normalizeGlifPointAttributesFormat2,
     _normalizeGlifComponentAttributesFormat2, _normalizeGlifTransformation,
     _normalizeColorString, _convertPlistElementToObject)
+from ufonormalizer import __version__ as ufonormalizerVersion
 
 # Python 3.4 deprecated readPlistFromBytes and writePlistToBytes
 # Python 2 has readPlistFromString and writePlistToString
 try:
-    from plistlib import loads
+    from plistlib import loads, dumps
 except ImportError:
     try:
         from plistlib import readPlistFromBytes as loads
+        from plistlib import writePlistToBytes as dumps
     except ImportError:
         from plistlib import readPlistFromString as loads
+        from plistlib import writePlistToString as dumps
 
 GLIFFORMAT1 = '''\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1564,6 +1570,142 @@ class XMLWriterTest(unittest.TestCase):
         self.assertEqual(xmlConvertInt(0o0000020), '16')
         self.assertEqual(xmlConvertInt(0o0000030), '24')
         self.assertEqual(xmlConvertInt(65536), '65536')
+
+    def test_duplicateUFO(self):
+        pass
+
+
+class SubpathTest(unittest.TestCase):
+    def __init__(self, methodName):
+        unittest.TestCase.__init__(self, methodName)
+        self.filename = 'tmp'
+        self.plistname = 'tmp.plist'
+
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+        self.filepath = os.path.join(self.directory, self.filename)
+        self.plistpath = os.path.join(self.directory, self.plistname)
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+
+    def createTestFile(self, text, num=None):
+        if num is None:
+            with open(self.filepath, 'w', encoding='utf-8') as f:
+                f.write(text)
+        else:
+            for i in range(num):
+                filepath = self.filepath + str(i)
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(text)
+
+    def test_subpathJoin(self):
+        self.assertEqual(subpathJoin('a', 'b', 'c'),
+                         os.path.join('a', 'b', 'c'))
+        self.assertEqual(subpathJoin('a', os.path.join('b', 'c')),
+                         os.path.join('a', 'b', 'c'))
+
+    def test_subpathSplit(self):
+        self.assertEqual(subpathSplit(os.path.join('a', 'b')),
+                         os.path.split(os.path.join('a', 'b')))
+        self.assertEqual(subpathSplit(os.path.join('a', 'b', 'c')),
+                         os.path.split(os.path.join('a', 'b', 'c')))
+
+    def test_subpathExists(self):
+        self.createTestFile('')
+        self.assertTrue(subpathExists(self.directory, self.filepath))
+        self.assertFalse(subpathExists(self.directory, 'nofile.txt'))
+
+    def test_subpathReadFile(self):
+        text = 'foo bar™⁜'
+        self.createTestFile(text)
+        self.assertEqual(text, subpathReadFile(self.directory, self.filename))
+
+    def test_subpathReadPlist(self):
+        data = dict([('a', 'foo'), ('b', 'bar'), ('c', '™')])
+        with open(self.plistpath, 'wb') as f:
+            f.write(dumps(data))
+        self.assertEqual(subpathReadPlist(self.directory, self.plistname),
+                         data)
+
+    def test_subpathWriteFile(self):
+        expected_text = 'foo bar™⁜'
+        subpathWriteFile(expected_text, self.directory, self.filename)
+        with open(self.filepath, 'r', encoding='utf-8') as f:
+            text = f.read()
+        self.assertEqual(text, expected_text)
+
+    def test_subpathWritePlist(self):
+        expected_data = dict([('a', 'foo'), ('b', 'bar'), ('c', '™')])
+        subpathWritePlist(expected_data, self.directory, self.plistname)
+        with open(self.plistpath, 'rb') as f:
+            data = loads(f.read())
+        self.assertEqual(data, expected_data)
+
+    def test_subpathRenameFile(self):
+        self.createTestFile('')
+        subpathRenameFile(self.directory, self.filename, self.filename + "_")
+        self.assertTrue(os.path.exists(self.filepath + "_"))
+
+    def test_subpathRenameDirectory(self):
+        dirname = 'tmpdir'
+        dirpath = os.path.join(self.directory, dirname)
+        os.mkdir(dirpath)
+        subpathRenameFile(self.directory, dirname, dirname + "_")
+        self.assertTrue(os.path.exists(dirpath + "_"))
+
+    def test_subpathRemoveFile(self):
+        self.createTestFile('')
+        subpathRemoveFile(self.directory, self.filename)
+        self.assertFalse(os.path.exists(self.filepath))
+
+    def test_subpathGetModTime(self):
+        self.createTestFile('')
+        mtime = subpathGetModTime(self.directory, self.filename)
+        self.assertEqual(os.path.getmtime(self.filepath), mtime)
+
+    def test_subpathNeedsRefresh(self):
+        import time
+        self.createTestFile('')
+        modTime = os.path.getmtime(self.filepath)
+        modTimes = {}
+        modTimes[self.filename] = float(modTime)
+        self.assertFalse(subpathNeedsRefresh(modTimes, self.directory,
+                         self.filename))
+        time.sleep(1)  # to get a different modtime
+        with open(self.filepath, 'w', encoding='utf-8') as f:
+            f.write('foo')
+        self.assertTrue(subpathNeedsRefresh(modTimes, self.directory,
+                        self.filename))
+
+    def test_storeModTimes(self):
+        num = 5
+        lib = {}
+        modTimes = {}
+        self.createTestFile('', num)
+        filenames = [self.filename + str(i) for i in range(num)]
+        for filename in filenames:
+            filepath = os.path.join(self.directory, filename)
+            modTime = os.path.getmtime(filepath)
+            modTimes[filename] = float('%.1f' % (modTime))
+        lines = ['version: %s' % (ufonormalizerVersion)]
+        lines += ['%.1f %s' % (modTimes[filename], filename)
+                  for filename in filenames]
+        storeModTimes(lib, modTimes)
+        self.assertEqual('\n'.join(lines), lib[modTimeLibKey])
+
+    def test_readModTimes(self):
+        num = 5
+        lib = {}
+        modTimes = {}
+        lines = ['version: %s' % (ufonormalizerVersion)]
+        filenames = [self.filename + str(i) for i in range(num)]
+        modTime = float(os.path.getmtime(self.directory))
+        for i, filename in enumerate(filenames):
+            modTimes[filename] = float('%.1f' % (modTime + i))
+            lines.append('%.1f %s' % (modTime + i, filename))
+        lib[modTimeLibKey] = '\n'.join(lines)
+        self.assertEqual(readModTimes(lib), modTimes)
 
 
 class NameTranslationTest(unittest.TestCase):
