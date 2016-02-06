@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import time
 import os
@@ -11,6 +11,7 @@ import textwrap
 import datetime
 import glob
 from collections import OrderedDict
+from io import open
 
 """
 - filter out unknown attributes and subelements
@@ -89,22 +90,22 @@ except NameError:
 # plistlib.readPlistFromString instead.
 if hasattr(plistlib, "loads"):
 
-    def _readPlistFromBytes(data):
+    def _loads(data):
         return plistlib.loads(data)
 
-    def _writePlistToBytes(plist):
+    def _dumps(plist):
         return plistlib.dumps(plist)
 elif hasattr(plistlib, "readPlistFromBytes"):
-    def _readPlistFromBytes(data):
+    def _loads(data):
         return plistlib.readPlistFromBytes(tobytes(data))
 
-    def _writePlistToBytes(plist):
+    def _dumps(plist):
         return plistlib.writePlistToBytes(plist)
 else:
-    def _readPlistFromBytes(data):
+    def _loads(data):
         return plistlib.readPlistFromString(data)
 
-    def _writePlistToBytes(plist):
+    def _dumps(plist):
         return plistlib.writePlistToString(plist)
 
 
@@ -1334,9 +1335,8 @@ def subpathReadFile(ufoPath, *subpath):
     Read the contents of a file.
     """
     path = subpathJoin(ufoPath, *subpath)
-    f = open(path, "rb")
-    text = f.read()
-    f.close()
+    with open(path, "r", encoding="utf-8") as f:
+        text = f.read()
     return text
 
 def subpathReadPlist(ufoPath, *subpath):
@@ -1344,12 +1344,14 @@ def subpathReadPlist(ufoPath, *subpath):
     Read the contents of a property list
     and convert it into a Python object.
     """
-    text = subpathReadFile(ufoPath, *subpath)
-    return _readPlistFromBytes(text)
+    path = subpathJoin(ufoPath, *subpath)
+    with open(path, "rb") as f:
+        data = f.read()
+    return _loads(data)
 
 # write
 
-def subpathWriteFile(data, ufoPath, *subpath):
+def subpathWriteFile(text, ufoPath, *subpath):
     """
     Write data to a file.
 
@@ -1360,19 +1362,12 @@ def subpathWriteFile(data, ufoPath, *subpath):
     path = subpathJoin(ufoPath, *subpath)
     if subpathExists(ufoPath, *subpath):
         existing = subpathReadFile(ufoPath, *subpath)
-
-        if type(data) != type(existing):
-            if not isinstance(data, unicode):
-                data = unicode(data, "utf-8")
-            if not isinstance(existing, unicode):
-                existing = unicode(existing, "utf-8")
     else:
         existing = None
 
-    if data != existing:
-        f = open(path, "wb")
-        f.write(tobytes(data))
-        f.close()
+    if text != existing:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
 
 def subpathWritePlist(data, ufoPath, *subpath):
     """
@@ -1383,8 +1378,16 @@ def subpathWritePlist(data, ufoPath, *subpath):
     file contains data that is different
     from the new data.
     """
-    data = _writePlistToBytes(data)
-    subpathWriteFile(data, ufoPath, *subpath)
+    data = _dumps(data)
+    path = subpathJoin(ufoPath, *subpath)
+    if subpathExists(ufoPath, *subpath):
+        existing = subpathReadPlist(ufoPath, *subpath)
+    else:
+        existing = None
+
+    if data != existing:
+        with open(path, "wb") as f:
+            f.write(data)
 
 # rename
 

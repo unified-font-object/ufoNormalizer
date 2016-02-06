@@ -1591,12 +1591,12 @@ class SubpathTest(unittest.TestCase):
 
     def createTestFile(self, text, num=None):
         if num is None:
-            with open(self.filepath, 'w') as f:
+            with open(self.filepath, 'w', encoding='utf-8') as f:
                 f.write(text)
         else:
             for i in range(num):
                 filepath = self.filepath + str(i)
-                with open(filepath, 'w') as f:
+                with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(text)
 
     def test_subpathJoin(self):
@@ -1631,7 +1631,7 @@ class SubpathTest(unittest.TestCase):
     def test_subpathWriteFile(self):
         expected_text = 'foo bar™⁜'
         subpathWriteFile(expected_text, self.directory, self.filename)
-        with open(self.filepath, 'r') as f:
+        with open(self.filepath, 'r', encoding='utf-8') as f:
             text = f.read()
         self.assertEqual(text, expected_text)
 
@@ -1673,7 +1673,7 @@ class SubpathTest(unittest.TestCase):
         self.assertFalse(subpathNeedsRefresh(modTimes, self.directory,
                          self.filename))
         time.sleep(1)  # to get a different modtime
-        with open(self.filepath, 'w') as f:
+        with open(self.filepath, 'w', encoding='utf-8') as f:
             f.write('foo')
         self.assertTrue(subpathNeedsRefresh(modTimes, self.directory,
                         self.filename))
