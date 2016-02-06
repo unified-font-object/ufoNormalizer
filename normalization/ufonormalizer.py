@@ -96,7 +96,7 @@ if hasattr(plistlib, "loads"):
         return plistlib.dumps(plist)
 elif hasattr(plistlib, "readPlistFromBytes"):
     def _readPlistFromBytes(data):
-        return plistlib.readPlistFromBytes(tobytes(data))
+        return plistlib.readPlistFromBytes(tobytes(data, encoding="utf8"))
 
     def _writePlistToBytes(plist):
         return plistlib.writePlistToBytes(plist)
@@ -1360,18 +1360,12 @@ def subpathWriteFile(data, ufoPath, *subpath):
     path = subpathJoin(ufoPath, *subpath)
     if subpathExists(ufoPath, *subpath):
         existing = subpathReadFile(ufoPath, *subpath)
-
-        if type(data) != type(existing):
-            if not isinstance(data, unicode):
-                data = unicode(data, "utf-8")
-            if not isinstance(existing, unicode):
-                existing = unicode(existing, "utf-8")
     else:
         existing = None
-
+    data = tobytes(data, encoding="utf8")
     if data != existing:
         f = open(path, "wb")
-        f.write(tobytes(data))
+        f.write(data)
         f.close()
 
 def subpathWritePlist(data, ufoPath, *subpath):
