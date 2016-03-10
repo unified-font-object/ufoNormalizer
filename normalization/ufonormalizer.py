@@ -39,7 +39,7 @@ def main(args=None):
     if args.test:
         runTests()
         return
-    inputPath = args.input
+    inputPath = os.path.normpath(args.input)
     outputPath = args.output
     onlyModified = not args.all
     if inputPath is None:
