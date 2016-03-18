@@ -1274,11 +1274,13 @@ def xmlConvertValue(value):
     return value
 
 def xmlConvertFloat(value):
-    value = "%.10f" % value
-    value = value.rstrip("0")
-    if value[-1] == ".":
-        return xmlConvertInt(int(float(value)))
-    return value
+    string = repr(value)
+    if "e" in string:
+        string = "%.16f" % value
+    string = string.rstrip("0")
+    if string[-1] == ".":
+        return xmlConvertInt(int(value))
+    return string
 
 def xmlConvertInt(value):
     return str(value)
