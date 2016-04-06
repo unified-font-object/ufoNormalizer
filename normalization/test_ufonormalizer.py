@@ -27,7 +27,7 @@ from ufonormalizer import (
     _normalizeGlifOutlineFormat2, _normalizeGlifContourFormat2,
     _normalizeGlifPointAttributesFormat2,
     _normalizeGlifComponentAttributesFormat2, _normalizeGlifTransformation,
-    _normalizeColorString, _convertPlistElementToObject)
+    _normalizeColorString, _convertPlistElementToObject, _normalizePlistFile)
 from ufonormalizer import __version__ as ufonormalizerVersion
 
 # Python 3.4 deprecated readPlistFromBytes and writePlistToBytes
@@ -152,6 +152,15 @@ INFOPLIST_NO_GUIDELINES = '''\
         <key>guidelines</key>
         <array/>
     </dict>
+</plist>
+'''
+
+EMPTY_PLIST = '''\
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
 </plist>
 '''
 
@@ -1658,6 +1667,21 @@ class SubpathTest(unittest.TestCase):
         self.createTestFile('')
         subpathRemoveFile(self.directory, self.filename)
         self.assertFalse(os.path.exists(self.filepath))
+
+    def test__normalizePlistFile_remove_empty(self):
+        emptyPlist = os.path.join(self.directory, "empty.plist")
+        with open(emptyPlist, "w") as f:
+            f.write(EMPTY_PLIST)
+        # 'removeEmpty' keyword argument is True by default
+        _normalizePlistFile({}, self.directory, "empty.plist")
+        self.assertFalse(os.path.exists(emptyPlist))
+
+    def test__normalizePlistFile_keep_empty(self):
+        emptyPlist = os.path.join(self.directory, "empty.plist")
+        with open(emptyPlist, "w") as f:
+            f.write(EMPTY_PLIST)
+        _normalizePlistFile({}, self.directory, "empty.plist", removeEmpty=False)
+        self.assertTrue(os.path.exists(emptyPlist))
 
     def test_subpathGetModTime(self):
         self.createTestFile('')
