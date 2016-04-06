@@ -335,7 +335,7 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
     # update contents.plist
     subpathWritePlist(newGlyphMapping, ufoPath, layerDirectory, "contents.plist")
     # normalize contents.plist
-    _normalizePlistFile({}, ufoPath, layerDirectory, "contents.plist")
+    _normalizePlistFile({}, ufoPath, layerDirectory, "contents.plist", removeEmpty=False)
     return newGlyphMapping
 
 def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
@@ -373,8 +373,8 @@ def _normalizePlistFile(modTimes, ufoPath, *subpath, **kwargs):
             text = normalizePropertyList(data, preprocessor=preprocessor)
             subpathWriteFile(text, ufoPath, *subpath)
             modTimes[subpath[-1]] = subpathGetModTime(ufoPath, *subpath)
-        # Don't write empty plist files.
-        else:
+        elif kwargs.get("removeEmpty", True):
+            # Don't write empty plist files, unless 'removeEmpty' is False
             subpathRemoveFile(ufoPath, *subpath)
             if subpath[-1] in modTimes:
                 del modTimes[subpath[-1]]
@@ -382,7 +382,7 @@ def _normalizePlistFile(modTimes, ufoPath, *subpath, **kwargs):
 # metainfo.plist
 
 def normalizeMetaInfoPlist(ufoPath, modTimes):
-    _normalizePlistFile(modTimes, ufoPath, "metainfo.plist")
+    _normalizePlistFile(modTimes, ufoPath, "metainfo.plist", removeEmpty=False)
 
 # fontinfo.plist
 
@@ -469,7 +469,7 @@ def normalizeKerningPlist(ufoPath, modTimes):
 # layercontents.plist
 
 def normalizeLayerContentsPlist(ufoPath, modTimes):
-    _normalizePlistFile(modTimes, ufoPath, "layercontents.plist")
+    _normalizePlistFile(modTimes, ufoPath, "layercontents.plist", removeEmpty=False)
 
 # lib.plist
 
