@@ -133,7 +133,17 @@ else:
 class UFONormalizerError(Exception): pass
 
 
-def normalizeUFO(ufoPath, outputPath=None, onlyModified=True):
+FLOAT_FORMAT = "%.10f"
+
+
+def normalizeUFO(ufoPath, outputPath=None, onlyModified=True, floatPrecision=10):
+    global FLOAT_FORMAT
+    if floatPrecision is None:
+        # use repr() and don't round floats
+        FLOAT_FORMAT = None
+    else:
+        # round floats to a fixed number of decimal digits
+        FLOAT_FORMAT = "%%.%df" % floatPrecision
     # if the output is going to a different location,
     # duplicate the UFO to the new place and work
     # on the new file instead of trying to reconstruct
@@ -1274,9 +1284,12 @@ def xmlConvertValue(value):
     return value
 
 def xmlConvertFloat(value):
-    string = repr(value)
-    if "e" in string:
-        string = "%.16f" % value
+    if FLOAT_FORMAT is None:
+        string = repr(value)
+        if "e" in string:
+            string = "%.16f" % value
+    else:
+        string = FLOAT_FORMAT % value
     string = string.rstrip("0")
     if string[-1] == ".":
         return xmlConvertInt(int(value))
