@@ -242,19 +242,6 @@ def normalizeGlyphsDirectoryNames(ufoPath):
     subpathWritePlist(newLayerMapping, ufoPath, "layercontents.plist")
     return newLayerMapping
 
-def _test_normalizeGlyphsDirectoryNames(oldLayers, expectedLayers):
-    import tempfile
-    directory = tempfile.mkdtemp()
-    for layerName, subDirectory in oldLayers:
-        os.mkdir(os.path.join(directory, subDirectory))
-    assert sorted(os.listdir(directory)) == sorted([oldDirectory for oldName, oldDirectory in oldLayers])
-    subpathWritePlist(oldLayers, directory, "layercontents.plist")
-    newLayers = normalizeGlyphsDirectoryNames(directory)
-    listing = os.listdir(directory)
-    listing.remove("layercontents.plist")
-    assert sorted(listing) == sorted([newDirectory for newName, newDirectory in newLayers])
-    shutil.rmtree(directory)
-    return newLayers == expectedLayers
 
 # ------
 # Glyphs
