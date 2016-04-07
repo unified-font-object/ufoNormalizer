@@ -12,6 +12,9 @@ import datetime
 import glob
 from collections import OrderedDict
 from io import open
+import logging
+import sys
+
 
 """
 - filter out unknown attributes and subelements
@@ -28,6 +31,10 @@ all possible files to a standard XML formatting, data
 structure and file naming scheme.
 """ % __version__
 
+
+log = logging.getLogger(__name__)
+
+
 def main(args=None):
     import argparse
     parser = argparse.ArgumentParser(description=description)
@@ -35,30 +42,33 @@ def main(args=None):
     parser.add_argument("-t", "--test", help="Run the normalizer's internal tests.", action="store_true")
     parser.add_argument("-o", "--output", help="Output path. If not given, the input path will be used.")
     parser.add_argument("-a", "--all", help="Normalize all files in the UFO. By default, only files modified since the previous normalization will be processed.", action="store_true")
+    parser.add_argument("-v", "--verbose", help="Print more info to console.", action="store_true")
+    parser.add_argument("-q", "--quiet", help="Suppress all non-error messages.", action="store_true")
     args = parser.parse_args(args)
     if args.test:
-        runTests()
-        return
+        return runTests()
+    if args.verbose and args.quiet:
+        parser.error("--quiet and --verbose options are mutually exclusive", file=sys.stderr)
+    logLevel = "DEBUG" if args.verbose else "ERROR" if args.quiet else "INFO"
+    logging.basicConfig(level=logLevel, format="%(message)s")
+    if args.input is None:
+        parser.error("No input path was specified.")
     inputPath = os.path.normpath(args.input)
     outputPath = args.output
     onlyModified = not args.all
-    if inputPath is None:
-        print("No input path was specified.")
-        return
     if not os.path.exists(inputPath):
-        print("Input path does not exist:", inputPath)
-        return
+        parser.error('Input path does not exist: "%s"' % inputPath)
     if os.path.splitext(inputPath)[-1].lower() != ".ufo":
-        print("Input path is not a UFO:", inputPath)
-        return
-    message = "Normalizing \"%s\"." % os.path.basename(inputPath)
+        parser.error('Input path is not a UFO: "%s"' % inputPath)
+    message = 'Normalizing "%s".'
     if not onlyModified:
         message += " Processing all files."
-    print(message)
+    log.info(message, os.path.basename(inputPath))
     start = time.time()
     normalizeUFO(inputPath, outputPath=outputPath, onlyModified=onlyModified)
     runtime = time.time() - start
-    print("Normalization complete (%.4f seconds)." % runtime)
+    log.info("Normalization complete (%.4f seconds).", runtime)
+
 
 # ---------
 # Internals
@@ -70,7 +80,6 @@ imageReferencesLibKey = "org.unifiedfontobject.normalizer.imageReferences"
 # Differences between Python 2 and Python 3
 # Python 3 does not have long, basestring, unicode
 try:
-
     long
 except NameError:
     long = int
@@ -232,6 +241,7 @@ def normalizeGlyphsDirectoryNames(ufoPath):
         oldLayerDirectory = oldLayerMapping[layerName]
         if newLayerDirectory == oldLayerDirectory:
             continue
+        log.debug('Normalizing "%s" layer directory name to "%s".', layerName, newLayerDirectory)
         tempDirectory = "org.unifiedfontobject.normalizer.%d" % index
         subpathRenameDirectory(ufoPath, oldLayerDirectory, tempDirectory)
         fromTempMapping[tempDirectory] = newLayerDirectory
@@ -252,6 +262,7 @@ def normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes):
     for fileName in sorted(glyphMapping.values()):
         location = subpathJoin("glyphs", fileName)
         if subpathNeedsRefresh(modTimes, ufoPath, location):
+            log.debug('Normalizing "%s".', os.path.join("glyphs", fileName))
             normalizeGLIF(ufoPath, "glyphs", fileName)
             modTimes[location] = subpathGetModTime(ufoPath, "glyphs", fileName)
 
@@ -370,11 +381,13 @@ def _normalizePlistFile(modTimes, ufoPath, *subpath, **kwargs):
         preprocessor = kwargs.get("preprocessor")
         data = subpathReadPlist(ufoPath, *subpath)
         if data:
+            log.debug('Normalizing "%s".', os.path.join(*subpath))
             text = normalizePropertyList(data, preprocessor=preprocessor)
             subpathWriteFile(text, ufoPath, *subpath)
             modTimes[subpath[-1]] = subpathGetModTime(ufoPath, *subpath)
         elif kwargs.get("removeEmpty", True):
             # Don't write empty plist files, unless 'removeEmpty' is False
+            log.debug('Removing empty "%s".', os.path.join(*subpath))
             subpathRemoveFile(ufoPath, *subpath)
             if subpath[-1] in modTimes:
                 del modTimes[subpath[-1]]
@@ -1640,7 +1653,7 @@ def runTests():
     import sys
     # unittest.main() will try parsing arguments, "-t" in this case
     sys.argv = sys.argv[:1]
-    unittest.main("test_ufonormalizer", exit=False, verbosity=2)
+    testrun = unittest.main("test_ufonormalizer", exit=False, verbosity=2)
 
     # test file searching
     paths = []
@@ -1673,6 +1686,8 @@ def runTests():
             normalizeUFO(outPath)
             t = time.time() - s
             print(os.path.basename(inPath) + ":", t, "seconds")
+
+    return not testrun.result.wasSuccessful()
 
 
 if __name__ == "__main__":
