@@ -48,7 +48,7 @@ def main(args=None):
     if args.test:
         return runTests()
     if args.verbose and args.quiet:
-        parser.error("--quiet and --verbose options are mutually exclusive", file=sys.stderr)
+        parser.error("--quiet and --verbose options are mutually exclusive")
     logLevel = "DEBUG" if args.verbose else "ERROR" if args.quiet else "INFO"
     logging.basicConfig(level=logLevel, format="%(message)s")
     if args.input is None:
