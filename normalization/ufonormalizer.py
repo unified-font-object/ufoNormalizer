@@ -1369,7 +1369,8 @@ def subpathWriteFile(text, ufoPath, *subpath):
         existing = None
 
     if text != existing:
-        with open(path, "w", encoding="utf-8") as f:
+        # always use Unix LF end of lines
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
 
 def subpathWritePlist(data, ufoPath, *subpath):

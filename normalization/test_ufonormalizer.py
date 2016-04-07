@@ -1664,6 +1664,14 @@ class SubpathTest(unittest.TestCase):
             text = f.read()
         self.assertEqual(text, expected_text)
 
+    def test_subpathWriteFile_newline(self):
+        mixed_eol_text = 'foo\r\nbar\nbaz\rquz'
+        expected_text = 'foo\nbar\nbaz\nquz'
+        subpathWriteFile(mixed_eol_text, self.directory, self.filename)
+        with open(self.filepath, 'r', encoding='utf-8') as f:
+            text = f.read()
+        self.assertEqual(text, expected_text)
+
     def test_subpathWritePlist(self):
         expected_data = dict([('a', 'foo'), ('b', 'bar'), ('c', '™')])
         subpathWritePlist(expected_data, self.directory, self.plistname)
