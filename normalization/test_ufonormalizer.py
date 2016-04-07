@@ -27,7 +27,8 @@ from ufonormalizer import (
     _normalizeGlifOutlineFormat2, _normalizeGlifContourFormat2,
     _normalizeGlifPointAttributesFormat2,
     _normalizeGlifComponentAttributesFormat2, _normalizeGlifTransformation,
-    _normalizeColorString, _convertPlistElementToObject, _normalizePlistFile)
+    _normalizeColorString, _convertPlistElementToObject, _normalizePlistFile,
+    main)
 from ufonormalizer import __version__ as ufonormalizerVersion
 
 # Python 3.4 deprecated readPlistFromBytes and writePlistToBytes
@@ -1326,6 +1327,22 @@ class UFONormalizerTest(unittest.TestCase):
         element = ET.fromstring("<data>YWJj</data>")
         self.assertEqual(_convertPlistElementToObject(element),
                          plistlib.Data(b'abc'))
+
+    def test_main_verbose_or_quiet(self):
+        with self.assertRaisesRegex(SystemExit, '2'):
+            main(['-v', '-q', 'test.ufo'])
+
+    def test_main_no_path(self):
+        with self.assertRaisesRegex(SystemExit, '2'):
+            main([])
+
+    def test_main_input_does_not_exist(self):
+        with self.assertRaisesRegex(SystemExit, '2'):
+            main(['foobarbazquz'])
+
+    def test_main_input_not_ufo(self):
+        with self.assertRaisesRegex(SystemExit, '2'):
+            main(['setup.py'])
 
 
 class XMLWriterTest(unittest.TestCase):
