@@ -48,7 +48,7 @@ def main(args=None):
     if args.test:
         return runTests()
     if args.verbose and args.quiet:
-        parser.error("--quiet and --verbose options are mutually exclusive")
+        parser.error("--quiet and --verbose options are mutually exclusive.")
     logLevel = "DEBUG" if args.verbose else "ERROR" if args.quiet else "INFO"
     logging.basicConfig(level=logLevel, format="%(message)s")
     if args.input is None:
@@ -57,9 +57,9 @@ def main(args=None):
     outputPath = args.output
     onlyModified = not args.all
     if not os.path.exists(inputPath):
-        parser.error('Input path does not exist: "%s"' % inputPath)
+        parser.error('Input path does not exist: "%s".' % inputPath)
     if os.path.splitext(inputPath)[-1].lower() != ".ufo":
-        parser.error('Input path is not a UFO: "%s"' % inputPath)
+        parser.error('Input path is not a UFO: "%s".' % inputPath)
     message = 'Normalizing "%s".'
     if not onlyModified:
         message += " Processing all files."
