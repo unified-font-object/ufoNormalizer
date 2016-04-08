@@ -51,6 +51,32 @@ except ImportError:
     # Python 3: a stream of *unicode* strings
     from io import StringIO
 
+try:
+    from tempfile import TemporaryDirectory  # Python 3 only
+except ImportError:
+    # backport for Python 2.7
+    class TemporaryDirectory(object):
+        """ Create and return a temporary directory. This has the same
+        behavior as mkdtemp but can be used as a context manager.
+
+        Adapted from tempfile.TemporaryDirectory (new in Python 3.2).
+        """
+        def __init__(self, suffix="", prefix="tmp", dir=None):
+            self._closed = False
+            self.name = tempfile.mkdtemp(suffix, prefix, dir)
+
+        def __enter__(self):
+            return self.name
+
+        def cleanup(self, _warn=False):
+            if self.name and not self._closed:
+                shutil.rmtree(self.name)
+                self._closed = True
+
+        def __exit__(self, exc, value, tb):
+            self.cleanup()
+
+
 GLIFFORMAT1 = '''\
 <?xml version="1.0" encoding="UTF-8"?>
 <glyph name="period" format="1">
@@ -1386,6 +1412,14 @@ class UFONormalizerTest(unittest.TestCase):
                 main([existing_not_ufo_file])
         self.assertTrue("Input path is not a UFO" in stream.getvalue())
 
+    def test_main_invalid_float_precision(self):
+        stream = StringIO()
+        with TemporaryDirectory(suffix=".ufo") as tmp:
+            with self.assertRaisesRegex(SystemExit, '2'):
+                with redirect_stderr(stream):
+                    main(['--float-precision', '-10', tmp])
+        self.assertTrue("float precision must be >= 0" in stream.getvalue())
+
 
 class XMLWriterTest(unittest.TestCase):
     def __init__(self, methodName):
@@ -1638,6 +1672,10 @@ class XMLWriterTest(unittest.TestCase):
         self.assertEqual(xmlConvertFloat(1.001), '1.001')
         self.assertEqual(xmlConvertFloat(1.0001), '1')
         self.assertEqual(xmlConvertFloat(1.0009), '1.001')
+        ufonormalizer.FLOAT_FORMAT = "%.0f"
+        self.assertEqual(xmlConvertFloat(1.001), '1')
+        self.assertEqual(xmlConvertFloat(1.9), '2')
+        self.assertEqual(xmlConvertFloat(10.0), '10')
         ufonormalizer.FLOAT_FORMAT = oldFloatFormat
 
     def test_xmlConvertInt(self):

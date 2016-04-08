@@ -37,6 +37,7 @@ log = logging.getLogger(__name__)
 
 def main(args=None):
     import argparse
+
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("input", help="Path to a UFO to normalize.", nargs="?")
     parser.add_argument("-t", "--test", help="Run the normalizer's internal tests.", action="store_true")
@@ -44,13 +45,17 @@ def main(args=None):
     parser.add_argument("-a", "--all", help="Normalize all files in the UFO. By default, only files modified since the previous normalization will be processed.", action="store_true")
     parser.add_argument("-v", "--verbose", help="Print more info to console.", action="store_true")
     parser.add_argument("-q", "--quiet", help="Suppress all non-error messages.", action="store_true")
+    parser.add_argument("--float-precision", type=int, default=DEFAULT_FLOAT_PRECISION, help="Round floats to the specified number of decimal places (default is %d). The value -1 means no rounding (i.e. use built-in repr()." % DEFAULT_FLOAT_PRECISION)
     args = parser.parse_args(args)
+
     if args.test:
         return runTests()
+
     if args.verbose and args.quiet:
         parser.error("--quiet and --verbose options are mutually exclusive.")
     logLevel = "DEBUG" if args.verbose else "ERROR" if args.quiet else "INFO"
     logging.basicConfig(level=logLevel, format="%(message)s")
+
     if args.input is None:
         parser.error("No input path was specified.")
     inputPath = os.path.normpath(args.input)
@@ -60,6 +65,14 @@ def main(args=None):
         parser.error('Input path does not exist: "%s".' % inputPath)
     if os.path.splitext(inputPath)[-1].lower() != ".ufo":
         parser.error('Input path is not a UFO: "%s".' % inputPath)
+
+    if args.float_precision >= 0:
+        floatPrecision = args.float_precision
+    elif args.float_precision == -1:
+        floatPrecision = None
+    else:
+        parser.error("float precision must be >= 0 or -1 (no round).")
+
     message = 'Normalizing "%s".'
     if not onlyModified:
         message += " Processing all files."
@@ -142,10 +155,11 @@ else:
 class UFONormalizerError(Exception): pass
 
 
-FLOAT_FORMAT = "%.10f"
+DEFAULT_FLOAT_PRECISION = 10
+FLOAT_FORMAT = "%%.%df" % DEFAULT_FLOAT_PRECISION
 
 
-def normalizeUFO(ufoPath, outputPath=None, onlyModified=True, floatPrecision=10):
+def normalizeUFO(ufoPath, outputPath=None, onlyModified=True, floatPrecision=DEFAULT_FLOAT_PRECISION):
     global FLOAT_FORMAT
     if floatPrecision is None:
         # use repr() and don't round floats
@@ -1303,9 +1317,10 @@ def xmlConvertFloat(value):
             string = "%.16f" % value
     else:
         string = FLOAT_FORMAT % value
-    string = string.rstrip("0")
-    if string[-1] == ".":
-        return xmlConvertInt(int(value))
+    if "." in string:
+        string = string.rstrip("0")
+        if string[-1] == ".":
+            return xmlConvertInt(int(value))
     return string
 
 def xmlConvertInt(value):
