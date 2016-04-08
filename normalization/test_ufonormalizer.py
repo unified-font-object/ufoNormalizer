@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import os
+import sys
 import unittest
 import tempfile
 import shutil
@@ -42,6 +43,13 @@ except ImportError:
     except ImportError:
         from plistlib import readPlistFromString as loads
         from plistlib import writePlistToString as dumps
+
+try:
+    # python 2: a stream of *byte* strings
+    from StringIO import StringIO
+except ImportError:
+    # Python 3: a stream of *unicode* strings
+    from io import StringIO
 
 GLIFFORMAT1 = '''\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -164,6 +172,26 @@ EMPTY_PLIST = '''\
 </dict>
 </plist>
 '''
+
+
+class redirect_stderr(object):
+    """ Context manager for temporarily redirecting stderr to another file.
+    Adapted from CPython 3.5 'contextlib._RedirectStream' source:
+    https://hg.python.org/cpython/file/3.5/Lib/contextlib.py#l162
+    """
+
+    def __init__(self, new_target):
+        self._new_target = new_target
+        # We use a list of old targets to make this CM re-entrant
+        self._old_targets = []
+
+    def __enter__(self):
+        self._old_targets.append(sys.stderr)
+        sys.stderr = self._new_target
+        return self._new_target
+
+    def __exit__(self, exctype, excinst, exctb):
+        sys.stderr = self._old_targets.pop()
 
 
 class UFONormalizerErrorTest(unittest.TestCase):
@@ -1329,20 +1357,34 @@ class UFONormalizerTest(unittest.TestCase):
                          plistlib.Data(b'abc'))
 
     def test_main_verbose_or_quiet(self):
+        stream = StringIO()
         with self.assertRaisesRegex(SystemExit, '2'):
-            main(['-v', '-q', 'test.ufo'])
+            with redirect_stderr(stream):
+                main(['-v', '-q', 'test.ufo'])
+        self.assertTrue("options are mutually exclusive" in stream.getvalue())
 
     def test_main_no_path(self):
+        stream = StringIO()
         with self.assertRaisesRegex(SystemExit, '2'):
-            main([])
+            with redirect_stderr(stream):
+                main([])
+        self.assertTrue("No input path" in stream.getvalue())
 
     def test_main_input_does_not_exist(self):
+        stream = StringIO()
         with self.assertRaisesRegex(SystemExit, '2'):
-            main(['foobarbazquz'])
+            with redirect_stderr(stream):
+                main(['foobarbazquz'])
+        self.assertTrue("Input path does not exist" in stream.getvalue())
 
     def test_main_input_not_ufo(self):
+        # I use the path to the test module itself
+        existing_not_ufo_file = os.path.realpath(__file__)
+        stream = StringIO()
         with self.assertRaisesRegex(SystemExit, '2'):
-            main(['setup.py'])
+            with redirect_stderr(stream):
+                main([existing_not_ufo_file])
+        self.assertTrue("Input path is not a UFO" in stream.getvalue())
 
 
 class XMLWriterTest(unittest.TestCase):
