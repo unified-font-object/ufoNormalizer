@@ -171,7 +171,7 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True, floatPrecision=DEF
     # duplicate the UFO to the new place and work
     # on the new file instead of trying to reconstruct
     # the file one piece at a time.
-    if outputPath is not None:
+    if outputPath is not None and outputPath != ufoPath:
         duplicateUFO(ufoPath, outputPath)
         ufoPath = outputPath
     # get the UFO format version
