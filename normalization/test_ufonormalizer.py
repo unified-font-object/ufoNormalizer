@@ -29,7 +29,7 @@ from ufonormalizer import (
     _normalizeGlifPointAttributesFormat2,
     _normalizeGlifComponentAttributesFormat2, _normalizeGlifTransformation,
     _normalizeColorString, _convertPlistElementToObject, _normalizePlistFile,
-    main)
+    main, xmlDeclaration, plistDocType)
 from ufonormalizer import __version__ as ufonormalizerVersion
 
 # Python 3.4 deprecated readPlistFromBytes and writePlistToBytes
@@ -190,14 +190,18 @@ INFOPLIST_NO_GUIDELINES = '''\
 </plist>
 '''
 
-EMPTY_PLIST = '''\
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+EMPTY_PLIST = "\n".join([xmlDeclaration, plistDocType, '<plist version="1.0"><dict></dict></plist>'])
+
+METAINFO_PLIST = "\n".join([xmlDeclaration, plistDocType, """\
 <plist version="1.0">
-<dict>
-</dict>
+    <dict>
+        <key>creator</key>
+        <string>org.robofab.ufoLib</string>
+        <key>formatVersion</key>
+        <integer>%d</integer>
+    </dict>
 </plist>
-'''
+"""])
 
 
 class redirect_stderr(object):
@@ -1420,6 +1424,65 @@ class UFONormalizerTest(unittest.TestCase):
                     main(['--float-precision', '-10', tmp])
         self.assertTrue("float precision must be >= 0" in stream.getvalue())
 
+    def test_main_no_metainfo_plist(self):
+        with TemporaryDirectory(suffix=".ufo") as tmp:
+            with self.assertRaisesRegex(
+                    UFONormalizerError, 'Required metainfo.plist file not in'):
+                main([tmp])
+
+    def test_main_metainfo_unsupported_formatVersion(self):
+        metainfo = METAINFO_PLIST % 1984
+        with TemporaryDirectory(suffix=".ufo") as tmp:
+            with open(os.path.join(tmp, "metainfo.plist"), 'w') as f:
+                f.write(metainfo)
+            with self.assertRaisesRegex(
+                    UFONormalizerError, 'Unsupported UFO format'):
+                main([tmp])
+
+    def test_main_metainfo_no_formatVersion(self):
+        metainfo = EMPTY_PLIST
+        with TemporaryDirectory(suffix=".ufo") as tmp:
+            with open(os.path.join(tmp, "metainfo.plist"), 'w') as f:
+                f.write(metainfo)
+            with self.assertRaisesRegex(
+                    UFONormalizerError, 'Required formatVersion value not defined'):
+                main([tmp])
+
+    def test_main_metainfo_invalid_formatVersion(self):
+        metainfo = "\n".join([xmlDeclaration, plistDocType, """\
+            <plist version="1.0">
+                <dict>
+                <key>formatVersion</key>
+                <string>foobar</string>
+                </dict>
+            </plist>"""])
+        with TemporaryDirectory(suffix=".ufo") as tmp:
+            with open(os.path.join(tmp, "metainfo.plist"), 'w') as f:
+                f.write(metainfo)
+            with self.assertRaisesRegex(
+                    UFONormalizerError,
+                    'Required formatVersion value not properly formatted'):
+                main([tmp])
+
+    def test_main_outputPath_duplicateUFO(self):
+        metainfo = METAINFO_PLIST % 3
+        with TemporaryDirectory(suffix=".ufo") as indir:
+            with open(os.path.join(indir, "metainfo.plist"), 'w') as f:
+                f.write(metainfo)
+            # same as input path
+            main(["-o", indir, indir])
+
+            # different but non existing path
+            outdir = os.path.join(indir, "output.ufo")
+            self.assertFalse(os.path.isdir(outdir))
+            main(["-o", outdir, indir])
+            self.assertTrue(os.path.exists(os.path.join(outdir, "metainfo.plist")))
+
+            # another existing dir
+            with TemporaryDirectory(suffix=".ufo") as outdir:
+                main(["-o", outdir, indir])
+                self.assertTrue(os.path.exists(os.path.join(outdir, "metainfo.plist")))
+
 
 class XMLWriterTest(unittest.TestCase):
     def __init__(self, methodName):
@@ -1696,9 +1759,6 @@ class XMLWriterTest(unittest.TestCase):
         self.assertEqual(xmlConvertInt(0o0000020), '16')
         self.assertEqual(xmlConvertInt(0o0000030), '24')
         self.assertEqual(xmlConvertInt(65536), '65536')
-
-    def test_duplicateUFO(self):
-        pass
 
 
 class SubpathTest(unittest.TestCase):
