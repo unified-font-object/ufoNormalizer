@@ -293,9 +293,9 @@ def normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes):
 def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
     if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
         layerInfo = subpathReadPlist(ufoPath, layerDirectory, "layerinfo.plist")
-        layerLib = layerInfo.get("lib", {})
     else:
-        layerLib = {}
+        layerInfo = {}
+    layerLib = layerInfo.get("lib", {})
     imageReferences = {}
     if onlyModified:
         stored = readImageReferences(layerLib)
@@ -319,7 +319,8 @@ def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
             modTimes[fileName] = subpathGetModTime(ufoPath, layerDirectory, fileName)
     storeModTimes(layerLib, modTimes)
     storeImageReferences(layerLib, imageReferences)
-    subpathWritePlist(layerLib, ufoPath, layerDirectory, "layerinfo.plist")
+    layerInfo["lib"] = layerLib
+    subpathWritePlist(layerInfo, ufoPath, layerDirectory, "layerinfo.plist")
     normalizeLayerInfoPlist(ufoPath, layerDirectory)
     referencedImages = set(imageReferences.values())
     return referencedImages
