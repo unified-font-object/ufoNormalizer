@@ -435,6 +435,12 @@ class UFONormalizerTest(unittest.TestCase):
         result = _normalizeDictGuideline(guideline)
         self.assertEqual(result, expected)
 
+    def test_normalizeFontInfoPlist_guidelines_zero_is_not_None(self):
+        guideline = dict(x=0, y=0, angle=0)
+        expected = dict(x=0, y=0, angle=0)
+        result = _normalizeDictGuideline(guideline)
+        self.assertEqual(result, expected)
+
     def _test_glifFormat(self):
         glifFormat = {}
         glifFormat[1] = GLIFFORMAT1.strip().replace("    ", "\t")

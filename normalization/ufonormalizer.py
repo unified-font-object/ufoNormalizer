@@ -453,26 +453,26 @@ def _normalizeDictGuideline(guideline):
     color = guideline.get("color")
     identifier = guideline.get("identifier")
     # either x or y must be defined
-    if not x and not y:
+    if x is None and y is None:
         return
     # if angle is specified, x and y must be specified
-    if (not x or not y) and angle:
+    if (x is None or y is None) and angle is not None:
         return
     # if x and y are specified, angle must be specified
-    if (x and y) and not angle:
+    if (x is not None and y is not None) and angle is None:
         return
     # value errors
-    if x:
+    if x is not None:
         try:
             x = float(x)
         except ValueError:
             return
-    if y:
+    if y is not None:
         try:
             y = float(y)
         except ValueError:
             return
-    if angle:
+    if angle is not None:
         try:
             angle = float(angle)
         except ValueError:
