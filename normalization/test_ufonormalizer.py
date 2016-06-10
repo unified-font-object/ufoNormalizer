@@ -1489,6 +1489,31 @@ class UFONormalizerTest(unittest.TestCase):
                 main(["-o", outdir, indir])
                 self.assertTrue(os.path.exists(os.path.join(outdir, "metainfo.plist")))
 
+    def test_main_float_precision_argument(self):
+        metainfo = METAINFO_PLIST % 3
+        libdata = """<?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+            <dict>
+                <key>test_float</key>
+                <real>0.3333333333333334</real>
+            </dict>
+        </plist>
+        """
+        with TemporaryDirectory(suffix=".ufo") as indir:
+            outdir = os.path.join(indir, 'output.ufo')
+
+            subpathWriteFile(metainfo, indir, "metainfo.plist")
+            subpathWriteFile(libdata, indir, "lib.plist")
+
+            main(["-o", outdir, "--float-precision=0", indir])
+            data = subpathReadPlist(outdir, "lib.plist")
+            self.assertEqual(data["test_float"], 0)
+
+            main(["-o", outdir, "--float-precision=10", indir])
+            data = subpathReadPlist(outdir, "lib.plist")
+            self.assertEqual(data["test_float"], 0.3333333333)
+
 
 class XMLWriterTest(unittest.TestCase):
     def __init__(self, methodName):
