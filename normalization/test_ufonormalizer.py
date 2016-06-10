@@ -1506,13 +1506,18 @@ class UFONormalizerTest(unittest.TestCase):
             subpathWriteFile(metainfo, indir, "metainfo.plist")
             subpathWriteFile(libdata, indir, "lib.plist")
 
+            # without --float-precision, it uses 10 decimal digits by default
+            main(["-o", outdir, indir])
+            data = subpathReadPlist(outdir, "lib.plist")
+            self.assertEqual(data["test_float"], 0.3333333333)
+
             main(["-o", outdir, "--float-precision=0", indir])
             data = subpathReadPlist(outdir, "lib.plist")
             self.assertEqual(data["test_float"], 0)
 
-            main(["-o", outdir, "--float-precision=10", indir])
+            main(["-o", outdir, "--float-precision=16", indir])
             data = subpathReadPlist(outdir, "lib.plist")
-            self.assertEqual(data["test_float"], 0.3333333333)
+            self.assertEqual(data["test_float"], 0.3333333333333334)
 
 
 class XMLWriterTest(unittest.TestCase):
