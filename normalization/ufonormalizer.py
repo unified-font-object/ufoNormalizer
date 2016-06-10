@@ -78,7 +78,8 @@ def main(args=None):
         message += " Processing all files."
     log.info(message, os.path.basename(inputPath))
     start = time.time()
-    normalizeUFO(inputPath, outputPath=outputPath, onlyModified=onlyModified)
+    normalizeUFO(inputPath, outputPath=outputPath, onlyModified=onlyModified,
+                 floatPrecision=floatPrecision)
     runtime = time.time() - start
     log.info("Normalization complete (%.4f seconds).", runtime)
 
