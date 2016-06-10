@@ -531,27 +531,14 @@ def normalizePropertyList(data, preprocessor=None):
 
 # GLIF
 
-def normalizeGLIF(ufoPath, *subpath):
-    """
-    - Normalize the mark color if specified.
-
-    TO DO: need doctests
-    The best way to test this is going to be have a GLIF
-    that contains all of the element types. This can be
-    round tripped and compared to make sure that the result
-    matches the expectations. This GLIF doesn't need to
-    contain a robust series of element variations as the
-    testing of those will be handled by the element
-    normalization functions.
-    """
-    # INVALID DATA POSSIBILITY: format version that can't be converted to int
-    # read and parse
-    glifPath = subpathJoin(ufoPath, *subpath)
-    text = subpathReadFile(ufoPath, *subpath)
+def normalizeGLIFString(text, glifPath=None, imageFileRef=[]):
     tree = ET.fromstring(text)
     glifVersion = tree.attrib.get("format")
     if glifVersion is None:
-        raise UFONormalizerError("Undefined GLIF format: %s" % glifPath)
+        msg = "Undefined GLIF format"
+        if glifPath is not None:
+            msg += ": %s" % glifPath
+        raise UFONormalizerError(msg)
     glifVersion = int(glifVersion)
     name = tree.attrib.get("name")
     # start the writer
@@ -583,7 +570,6 @@ def normalizeGLIF(ufoPath, *subpath):
             outline = element
         elif tag == "lib":
             lib = element
-    imageFileName = None
     # write the data
     writer.beginElement("glyph", attrs=dict(name=name, format=glifVersion))
     for uni in unicodes:
@@ -591,7 +577,7 @@ def normalizeGLIF(ufoPath, *subpath):
     if advance is not None:
         _normalizeGlifAdvance(advance, writer)
     if glifVersion >= 2 and image is not None:
-        imageFileName = image.attrib.get("fileName")
+        imageFileRef[:] = image.attrib.get("fileName")
         _normalizeGlifImage(image, writer)
     if outline is not None:
         if glifVersion == 1:
@@ -609,10 +595,30 @@ def normalizeGLIF(ufoPath, *subpath):
     if note is not None:
         _normalizeGlifNote(note, writer)
     writer.endElement("glyph")
-    # write to the file
-    text = writer.getText()
-    subpathWriteFile(text, ufoPath, *subpath)
+    return writer.getText()
+
+def normalizeGLIF(ufoPath, *subpath):
+    """
+    - Normalize the mark color if specified.
+
+    TO DO: need doctests
+    The best way to test this is going to be have a GLIF
+    that contains all of the element types. This can be
+    round tripped and compared to make sure that the result
+    matches the expectations. This GLIF doesn't need to
+    contain a robust series of element variations as the
+    testing of those will be handled by the element
+    normalization functions.
+    """
+    # INVALID DATA POSSIBILITY: format version that can't be converted to int
+    # read and parse
+    glifPath = subpathJoin(ufoPath, *subpath)
+    text = subpathReadFile(ufoPath, *subpath)
+    imageFileRef = []
+    normalizedText = normalizeGLIFString(text, glifPath, imageFileRef)
+    subpathWriteFile(normalizedText, ufoPath, *subpath)
     # return the image reference
+    imageFileName = imageFileRef[0] if imageFileRef else None
     return imageFileName
 
 def _normalizeGlifUnicode(element, writer):
