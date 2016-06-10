@@ -1515,7 +1515,12 @@ class UFONormalizerTest(unittest.TestCase):
             data = subpathReadPlist(outdir, "lib.plist")
             self.assertEqual(data["test_float"], 0)
 
-            main(["-o", outdir, "--float-precision=16", indir])
+            main(["-o", outdir, "--float-precision=6", indir])
+            data = subpathReadPlist(outdir, "lib.plist")
+            self.assertEqual(data["test_float"], 0.333333)
+
+            # -1 means no rounding, use repr()
+            main(["-o", outdir, "--float-precision=-1", indir])
             data = subpathReadPlist(outdir, "lib.plist")
             self.assertEqual(data["test_float"], 0.3333333333333334)
 
