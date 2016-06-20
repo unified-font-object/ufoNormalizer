@@ -22,7 +22,7 @@ import sys
 - things that need to be improved are marked with "# TO DO"
 """
 
-__version__ = "0a1"
+__version__ = "0a2"
 description = """
 UFO Normalizer (version %s):
 
@@ -528,6 +528,7 @@ def normalizePropertyList(data, preprocessor=None):
     writer.beginElement("plist", attrs=dict(version="1.0"))
     writer.propertyListObject(data)
     writer.endElement("plist")
+    writer.raw("")
     return writer.getText()
 
 # GLIF
@@ -596,6 +597,7 @@ def normalizeGLIFString(text, glifPath=None, imageFileRef=[]):
     if note is not None:
         _normalizeGlifNote(note, writer)
     writer.endElement("glyph")
+    writer.raw("")
     return writer.getText()
 
 def normalizeGLIF(ufoPath, *subpath):
