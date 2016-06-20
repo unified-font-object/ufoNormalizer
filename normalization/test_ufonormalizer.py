@@ -443,9 +443,9 @@ class UFONormalizerTest(unittest.TestCase):
 
     def _test_glifFormat(self):
         glifFormat = {}
-        glifFormat[1] = GLIFFORMAT1.strip().replace("    ", "\t")
+        glifFormat[1] = GLIFFORMAT1.replace("    ", "\t")
 
-        glifFormat[2] = GLIFFORMAT2.strip().replace("    ", "\t")
+        glifFormat[2] = GLIFFORMAT2.replace("    ", "\t")
         return glifFormat
 
     def test_normalizeGLIF_formats_1_and_2(self):
