@@ -153,7 +153,8 @@ else:
     tostr = tounicode
 
 
-class UFONormalizerError(Exception): pass
+class UFONormalizerError(Exception):
+    pass
 
 
 DEFAULT_FLOAT_PRECISION = 10
@@ -1167,7 +1168,8 @@ class XMLWriter(object):
             if not paragraph:
                 paragraphs.append("")
             else:
-                paragraph = textwrap.wrap(paragraph.rstrip(),
+                paragraph = textwrap.wrap(
+                    paragraph.rstrip(),
                     width=xmlTextMaxLineLength,
                     expand_tabs=False,
                     replace_whitespace=False,
