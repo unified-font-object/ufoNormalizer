@@ -1,11 +1,22 @@
 from setuptools import setup
-from normalization.ufonormalizer import __version__
+from io import open
+import ast
+
+
+with open('normalization/ufonormalizer.py', 'r', encoding='utf-8') as f:
+    for line in f:
+        if line.startswith(u'__version__'):
+            version = ast.parse(line).body[0].value.s
+            break
+    else:
+        raise RuntimeError("No __version__ string found!")
+
 
 setup(name="ufonormalizer",
-      version=__version__,
+      version=version,
       description="Example implementation of a UFO normalizer",
       author="Tal Leming",
-      email="tal@typesupply.com",
+      author_email="tal@typesupply.com",
       url="https://github.com/unified-font-object/ufoNormalizer",
       package_dir={"": "normalization"},
       py_modules=['ufonormalizer'],
