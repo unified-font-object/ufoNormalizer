@@ -45,6 +45,7 @@ def main(args=None):
     parser.add_argument("-v", "--verbose", help="Print more info to console.", action="store_true")
     parser.add_argument("-q", "--quiet", help="Suppress all non-error messages.", action="store_true")
     parser.add_argument("--float-precision", type=int, default=DEFAULT_FLOAT_PRECISION, help="Round floats to the specified number of decimal places (default is %d). The value -1 means no rounding (i.e. use built-in repr()." % DEFAULT_FLOAT_PRECISION)
+    parser.add_argument("-m", "--no-mod-times", help="Do not write normalization time stamps.", action="store_true")
     args = parser.parse_args(args)
 
     if args.test:
@@ -72,13 +73,15 @@ def main(args=None):
     else:
         parser.error("float precision must be >= 0 or -1 (no round).")
 
+    writeModTimes = not args.no_mod_times
+
     message = 'Normalizing "%s".'
     if not onlyModified:
         message += " Processing all files."
     log.info(message, os.path.basename(inputPath))
     start = time.time()
     normalizeUFO(inputPath, outputPath=outputPath, onlyModified=onlyModified,
-                 floatPrecision=floatPrecision)
+                 floatPrecision=floatPrecision, writeModTimes=writeModTimes)
     runtime = time.time() - start
     log.info("Normalization complete (%.4f seconds).", runtime)
 
@@ -160,7 +163,8 @@ DEFAULT_FLOAT_PRECISION = 10
 FLOAT_FORMAT = "%%.%df" % DEFAULT_FLOAT_PRECISION
 
 
-def normalizeUFO(ufoPath, outputPath=None, onlyModified=True, floatPrecision=DEFAULT_FLOAT_PRECISION):
+def normalizeUFO(ufoPath, outputPath=None, onlyModified=True,
+                 floatPrecision=DEFAULT_FLOAT_PRECISION, writeModTimes=True):
     global FLOAT_FORMAT
     if floatPrecision is None:
         # use repr() and don't round floats
@@ -225,10 +229,11 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True, floatPrecision=DEF
     if subpathExists(ufoPath, "layercontents.plist"):
         normalizeLayerContentsPlist(ufoPath, modTimes)
     # update the mod time storage, write, normalize
-    storeModTimes(fontLib, modTimes)
-    subpathWritePlist(fontLib, ufoPath, "lib.plist")
-    if subpathExists(ufoPath, "lib.plist"):
-        normalizeLibPlist(ufoPath)
+    if writeModTimes:
+        storeModTimes(fontLib, modTimes)
+        subpathWritePlist(fontLib, ufoPath, "lib.plist")
+        if subpathExists(ufoPath, "lib.plist"):
+            normalizeLibPlist(ufoPath)
 
 # ------
 # Layers
