@@ -760,7 +760,7 @@ def _normalizeGlifNote(element, writer):
     if not value:
         return
     if not value.strip():
-    	return
+        return
     writer.beginElement("note")
     writer.text(value)
     writer.endElement("note")
@@ -1045,7 +1045,7 @@ def _normalizeColorString(value):
     except ValueError:
         return
     if any(x < 0 or x > 1 for x in (r, g, b, a)):
-    	return
+        return
     color = (xmlConvertFloat(i) for i in (r, g, b, a))
     return ",".join(color)
 
@@ -1226,12 +1226,12 @@ class XMLWriter(object):
         elif isinstance(data, (int, long)):
             self._plistInt(data)
         elif isinstance(data, float):
-        	dataStr = xmlConvertFloat(data)
-        	try:
-        		data = int(dataStr)
-        		self._plistInt(data)
-        	except ValueError:
-	            self._plistFloat(data)
+            dataStr = xmlConvertFloat(data)
+            try:
+                data = int(dataStr)
+                self._plistInt(data)
+            except ValueError:
+                self._plistFloat(data)
         elif isinstance(data, plistlib.Data):
             self._plistData(data)
         elif isinstance(data, datetime.datetime):
