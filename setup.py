@@ -1,7 +1,8 @@
 from setuptools import setup
+from normalization.ufonormalizer import __version__
 
 setup(name="ufonormalizer",
-      version="0.1",
+      version=__version__,
       description="Example implementation of a UFO normalizer",
       author="Tal Leming",
       email="tal@typesupply.com",
