@@ -13,7 +13,6 @@ import glob
 from collections import OrderedDict
 from io import open
 import logging
-import sys
 
 
 """
