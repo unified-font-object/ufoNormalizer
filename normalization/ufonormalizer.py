@@ -1634,8 +1634,8 @@ def handleClash1(userName, existing=[], prefix="", suffix=""):
     prefixLength = len(prefix)
     suffixLength = len(suffix)
     if prefixLength + len(userName) + suffixLength + 15 > maxFileNameLength:
-        l = (prefixLength + len(userName) + suffixLength + 15)
-        sliceLength = maxFileNameLength - l
+        length = (prefixLength + len(userName) + suffixLength + 15)
+        sliceLength = maxFileNameLength - length
         userName = userName[:sliceLength]
     finalName = None
     # try to add numbers to create a unique name
