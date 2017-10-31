@@ -21,7 +21,7 @@ import logging
 - things that need to be improved are marked with "# TO DO"
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 description = """
 UFO Normalizer (version %s):
 
@@ -232,8 +232,8 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True,
     if writeModTimes:
         storeModTimes(fontLib, modTimes)
         subpathWritePlist(fontLib, ufoPath, "lib.plist")
-        if subpathExists(ufoPath, "lib.plist"):
-            normalizeLibPlist(ufoPath)
+    if subpathExists(ufoPath, "lib.plist"):
+        normalizeLibPlist(ufoPath)
 
 # ------
 # Layers
