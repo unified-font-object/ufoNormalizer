@@ -15,7 +15,8 @@ with open('src/ufonormalizer.py', 'r', encoding='utf-8') as f:
 setup(
     name="ufonormalizer",
     version=version,
-    description="Example implementation of a UFO normalizer",
+    description=("Script to normalize the XML and other data "
+                 "inside of a UFO."),
     author="Tal Leming",
     author_email="tal@typesupply.com",
     url="https://github.com/unified-font-object/ufoNormalizer",
