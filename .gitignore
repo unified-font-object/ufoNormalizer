@@ -43,6 +43,9 @@ nosetests.xml
 coverage.xml
 *,cover
 
+# Test data
+tests/data/*.ufo/
+
 # Translations
 *.mo
 *.pot

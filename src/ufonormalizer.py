@@ -1700,12 +1700,21 @@ def runTests():
     import sys
     # unittest.main() will try parsing arguments, "-t" in this case
     sys.argv = sys.argv[:1]
+
+    testsdir = os.path.join(os.path.dirname(__file__), os.path.pardir, "tests")
+    if not os.path.exists(os.path.join(testsdir, "test_ufonormalizer.py")):
+        print("tests not found; run this from the source directory")
+        return 1
+
+    # make sure 'tests' folder is on PYTHONPATH so unittest can import
+    sys.path.append(testsdir)
+
     testrun = unittest.main("test_ufonormalizer", exit=False, verbosity=2)
 
     # test file searching
+    ufo_dir = os.path.join(testsdir, "data")
     paths = []
-    d = os.path.dirname(__file__)
-    pattern = os.path.join(d, "test", "*.ufo")
+    pattern = os.path.join(ufo_dir, "*.ufo")
     for inPath in glob.glob(pattern):
         if inPath.endswith("-n.ufo"):
             continue
