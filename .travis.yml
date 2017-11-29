@@ -7,7 +7,6 @@ python:
   - "3.4"
   - "3.5"
 script:
-  - coverage run normalization/ufonormalizer.py -t
-  - python setup.py test
+  - coverage run setup.py test
 after_success:
   coveralls
