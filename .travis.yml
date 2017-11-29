@@ -9,3 +9,16 @@ script:
   - coverage run setup.py test
 after_success:
   coveralls
+deploy:
+  # deploy to PyPI on tags
+  provider: pypi
+  server: https://upload.pypi.org/legacy/
+  on:
+    repo: unified-font-object/ufoNormalizer
+    tags: true
+    all_branches: true
+    python: 3.6
+  user: anthrotype
+  password:
+    secure: l99UU3RF0ZggmBnCCixxPE+KJU7ZfDfqGn+qJRHceeZ6A12AIDPXRS1GmDvg/4bZiUza2MzXGqTWi8sKC99xLCAL7LF56XF0ZrA8JamYS4AvWPiS0gHDRJGNV/WcoJ/Fx+PQtfSDXX0JQcPg2sh/prpydEZwNJetc4OVXaCpkIt7Th0uHz/aW7EIX4IyyTuLW54CJ2OLmOiPFqcjJbN6EcbBf0nq5gltuNi/LIYBgtgv5/ehCbL+OIz+jytpFgHYwWmJ7vaJtTp6uSrt2AtUaAIwwktrnOEq/ymkqIOTBJGwa3jUDzyOuq/Aka7iCuAGNV4PhCGhoyp8SUnvuLeR5Qt3PYL1KHQxDlyvgQECkgN9B9JegjZQS092wbFghiXy5xoojqOdgxZyYHRIyJCXCcU669dU6izN2aJMKk/WogdIbshTMztwHFDX/kZyVI++7z7XBWjPjFohAqqAV4KYREFp9qJap50BFEqPqPNzu/dGPKU/Ora04beHbRcf/EZ8+r+dBpsYLmcX4qFmPPvNeWRz1db2DY+7oZhzukt4JVvf0C6j1nEf4iLWl1UUrl1pu1ZPZqRAUu4WsbWiF8aoHTMuwti9Wgam+odbIGQUWt97N+SDjJlhBwO0cA6QPKF6BeBC2FtxUqA/KkGOr/lwIFZCXIANWDHVnO+ZOszAeEw=
+  distributions: sdist bdist_wheel
