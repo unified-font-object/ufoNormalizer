@@ -1,11 +1,10 @@
 language: python
 install:
   - pip install coveralls
-  - python setup.py install
 python:
   - "2.7"
-  - "3.4"
   - "3.5"
+  - "3.6"
 script:
   - coverage run setup.py test
 after_success:
