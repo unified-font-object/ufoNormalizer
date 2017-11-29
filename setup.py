@@ -3,7 +3,7 @@ from io import open
 import ast
 
 
-with open('normalization/ufonormalizer.py', 'r', encoding='utf-8') as f:
+with open('src/ufonormalizer.py', 'r', encoding='utf-8') as f:
     for line in f:
         if line.startswith(u'__version__'):
             version = ast.parse(line).body[0].value.s
@@ -18,12 +18,12 @@ setup(name="ufonormalizer",
       author="Tal Leming",
       author_email="tal@typesupply.com",
       url="https://github.com/unified-font-object/ufoNormalizer",
-      package_dir={"": "normalization"},
+      package_dir={"": "src"},
       py_modules=['ufonormalizer'],
       entry_points={
           'console_scripts': [
               "ufonormalizer = ufonormalizer:main",
               ]
           },
-      test_suite="normalization"
+      test_suite="tests",
       )
