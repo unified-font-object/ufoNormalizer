@@ -1,0 +1,6 @@
+include README.md
+include LICENSE.txt
+include appveyor.yml
+include .travis.yml
+recursive-include tests/ *.py
+recursive-include tests/data/ *.glif
