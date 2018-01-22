@@ -214,7 +214,7 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True,
         if subpathExists(ufoPath, "layercontents.plist"):
             layerContents = subpathReadPlist(ufoPath, "layercontents.plist")
             for layerName, layerDirectory in layerContents:
-                layerReferencedImages = normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=onlyModified)
+                layerReferencedImages = normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=onlyModified, writeModTimes=writeModTimes)
                 referencedImages |= layerReferencedImages
         imagesToPurge = availableImages - referencedImages
         purgeImagesDirectory(ufoPath, imagesToPurge)
@@ -296,7 +296,7 @@ def normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes):
             normalizeGLIF(ufoPath, "glyphs", fileName)
             modTimes[location] = subpathGetModTime(ufoPath, "glyphs", fileName)
 
-def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
+def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True, writeModTimes=True):
     if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
         layerInfo = subpathReadPlist(ufoPath, layerDirectory, "layerinfo.plist")
     else:
@@ -323,7 +323,8 @@ def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True):
             elif fileName in imageReferences:
                 del imageReferences[fileName]
             modTimes[fileName] = subpathGetModTime(ufoPath, layerDirectory, fileName)
-    storeModTimes(layerLib, modTimes)
+    if writeModTimes:
+        storeModTimes(layerLib, modTimes)
     storeImageReferences(layerLib, imageReferences)
     layerInfo["lib"] = layerLib
     subpathWritePlist(layerInfo, ufoPath, layerDirectory, "layerinfo.plist")
