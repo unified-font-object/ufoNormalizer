@@ -116,7 +116,7 @@ except NameError:
 if hasattr(plistlib, "loads"):
 
     def _loads(data):
-        return plistlib.loads(data)
+        return plistlib.loads(data, use_builtin_types=False)
 
     def _dumps(plist):
         return plistlib.dumps(plist)
