@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import datetime
 import plistlib
+import base64
 from io import open
 from xml.etree import cElementTree as ET
 from ufonormalizer import (
@@ -1523,6 +1524,37 @@ class UFONormalizerTest(unittest.TestCase):
             main(["-o", outdir, "--float-precision=-1", indir])
             data = subpathReadPlist(outdir, "lib.plist")
             self.assertEqual(data["test_float"], 0.3333333333333334)
+
+    def test_normalizeLibPlistWithBytesData(self):
+        metainfo = METAINFO_PLIST % 3
+        libdata = """<?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+            <dict>
+                <key>org.robofab.fontlab.customdata</key>
+                <data>
+                gAJ9cQFVA2xpYnECY3BsaXN0bGliCl9JbnRlcm5hbERpY3QKcQMpgXEEVSdj
+                b20uc2NocmlmdGdlc3RhbHR1bmcuR2x5cGhzLmxhc3RDaGFuZ2VxBVUTMjAx
+                Ny8wOS8yNiAwOToxMzoyMXEGc31xB2JzLg==
+                </data>
+            </dict>
+        </plist>
+        """
+        with TemporaryDirectory(suffix=".ufo") as indir:
+            outdir = os.path.join(indir, 'output.ufo')
+
+            subpathWriteFile(metainfo, indir, "metainfo.plist")
+            subpathWriteFile(libdata, indir, "lib.plist")
+
+            main(["-o", outdir, indir])
+            data = subpathReadPlist(outdir, "lib.plist")
+            self.assertEqual(
+                data['org.robofab.fontlab.customdata'],
+                base64.b64decode("""\
+                gAJ9cQFVA2xpYnECY3BsaXN0bGliCl9JbnRlcm5hbERpY3QKcQMpgXEEVSdj
+                b20uc2NocmlmdGdlc3RhbHR1bmcuR2x5cGhzLmxhc3RDaGFuZ2VxBVUTMjAx
+                Ny8wOS8yNiAwOToxMzoyMXEGc31xB2JzLg==
+                """))
 
 
 class XMLWriterTest(unittest.TestCase):
