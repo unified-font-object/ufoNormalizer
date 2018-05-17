@@ -105,6 +105,8 @@ GLIFFORMAT1 = '''\
     </outline>
     <lib>
         <dict>
+            <key>abc</key>
+            <string></string>
             <key>com.letterror.somestuff</key>
             <string>arbitrary custom data!</string>
         </dict>
@@ -142,6 +144,8 @@ GLIFFORMAT2 = '''\
     <guideline name="overshoot" y="-12"/>
     <lib>
         <dict>
+            <key>abc</key>
+            <string></string>
             <key>com.letterror.somestuff</key>
             <string>arbitrary custom data!</string>
             <key>public.markColor</key>
