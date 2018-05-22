@@ -24,6 +24,8 @@
 	</outline>
 	<lib>
 		<dict>
+			<key>abc</key>
+			<string></string>
 			<key>com.letterror.somestuff</key>
 			<string>arbitrary custom data!</string>
 		</dict>

@@ -1090,6 +1090,8 @@ def _convertPlistElementToObject(element):
             else:
                 obj[key] = _convertPlistElementToObject(subElement)
     elif tag == "string":
+        if not element.text:
+            return ""
         return xmlEscapeText(element.text)
     elif tag == "data":
         return plistlib.Data.fromBase64(element.text)

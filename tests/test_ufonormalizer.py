@@ -105,6 +105,8 @@ GLIFFORMAT1 = '''\
     </outline>
     <lib>
         <dict>
+            <key>abc</key>
+            <string></string>
             <key>com.letterror.somestuff</key>
             <string>arbitrary custom data!</string>
         </dict>
@@ -142,6 +144,8 @@ GLIFFORMAT2 = '''\
     <guideline name="overshoot" y="-12"/>
     <lib>
         <dict>
+            <key>abc</key>
+            <string></string>
             <key>com.letterror.somestuff</key>
             <string>arbitrary custom data!</string>
             <key>public.markColor</key>
@@ -749,6 +753,8 @@ class UFONormalizerTest(unittest.TestCase):
             <dict>
                 <key>foo</key>
                 <string>bar</string>
+                <key>abc</key>
+                <string></string>
             </dict>
         </lib>
         '''.strip()
@@ -757,8 +763,10 @@ class UFONormalizerTest(unittest.TestCase):
         _normalizeGlifLib(element, writer)
         self.assertEqual(
             writer.getText(),
-            '<lib>\n\t<dict>\n\t\t<key>foo</key>\n\t\t<string>bar</string>'
-            '\n\t</dict>\n</lib>')
+            '<lib>\n\t<dict>\n'
+            '\t\t<key>abc</key>\n\t\t<string></string>\n'
+            '\t\t<key>foo</key>\n\t\t<string>bar</string>\n'
+            '\t</dict>\n</lib>')
 
     def test_normalizeGLIF_lib_undefined(self):
         element = ET.fromstring("<lib></lib>")
