@@ -1094,6 +1094,8 @@ def _convertPlistElementToObject(element):
             return ""
         return xmlEscapeText(element.text)
     elif tag == "data":
+        if not element.text:
+            return plistlib.Data.fromBase64("")
         return plistlib.Data.fromBase64(element.text)
     elif tag == "date":
         return _dateFromString(element.text)
