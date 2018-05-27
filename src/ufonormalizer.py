@@ -1284,11 +1284,14 @@ class XMLWriter(object):
         self.simpleElement("date", value=data)
 
     def _plistData(self, data):
-        self.beginElement("data")
         data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
-        for line in tostr(data).splitlines():
-            self.raw(line)
-        self.endElement("data")
+        if not data:
+            self.simpleElement("data", value="")
+        else:
+            self.beginElement("data")
+            for line in tostr(data).splitlines():
+                self.raw(line)
+            self.endElement("data")
 
     # support
 
