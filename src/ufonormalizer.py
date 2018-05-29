@@ -21,7 +21,7 @@ import logging
 - things that need to be improved are marked with "# TO DO"
 """
 
-__version__ = "0.3.5"
+__version__ = "0.3.6.dev0"
 description = """
 UFO Normalizer (version %s):
 
