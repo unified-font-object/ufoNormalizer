@@ -755,6 +755,8 @@ class UFONormalizerTest(unittest.TestCase):
                 <string>bar</string>
                 <key>abc</key>
                 <string></string>
+                <key>def</key>
+                <data></data>
             </dict>
         </lib>
         '''.strip()
@@ -765,6 +767,7 @@ class UFONormalizerTest(unittest.TestCase):
             writer.getText(),
             '<lib>\n\t<dict>\n'
             '\t\t<key>abc</key>\n\t\t<string></string>\n'
+            '\t\t<key>def</key>\n\t\t<data></data>\n'
             '\t\t<key>foo</key>\n\t\t<string>bar</string>\n'
             '\t</dict>\n</lib>')
 

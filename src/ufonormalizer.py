@@ -1094,6 +1094,8 @@ def _convertPlistElementToObject(element):
             return ""
         return xmlEscapeText(element.text)
     elif tag == "data":
+        if not element.text:
+            return plistlib.Data.fromBase64("")
         return plistlib.Data.fromBase64(element.text)
     elif tag == "date":
         return _dateFromString(element.text)
@@ -1282,11 +1284,14 @@ class XMLWriter(object):
         self.simpleElement("date", value=data)
 
     def _plistData(self, data):
-        self.beginElement("data")
         data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
-        for line in tostr(data).splitlines():
-            self.raw(line)
-        self.endElement("data")
+        if not data:
+            self.simpleElement("data", value="")
+        else:
+            self.beginElement("data")
+            for line in tostr(data).splitlines():
+                self.raw(line)
+            self.endElement("data")
 
     # support
 
