@@ -452,6 +452,7 @@ def _normalizeDictGuideline(guideline):
     """
     - Don't write if angle is defined but either x or y are not defined.
     - Don't write if both x and y are defined but angle is not defined.
+      However <x=300 y=0> or <x=0 y=300> are allowed, and the 0 becomes None.
     """
     x = guideline.get("x")
     y = guideline.get("y")
@@ -459,15 +460,6 @@ def _normalizeDictGuideline(guideline):
     name = guideline.get("name")
     color = guideline.get("color")
     identifier = guideline.get("identifier")
-    # either x or y must be defined
-    if x is None and y is None:
-        return
-    # if angle is specified, x and y must be specified
-    if (x is None or y is None) and angle is not None:
-        return
-    # if x and y are specified, angle must be specified
-    if (x is not None and y is not None) and angle is None:
-        return
     # value errors
     if x is not None:
         try:
@@ -484,6 +476,21 @@ def _normalizeDictGuideline(guideline):
             angle = float(angle)
         except ValueError:
             return
+    # <x=300 y=0> or <x=0 y=300> are allowed, and the 0 becomes None.
+    if angle is None:
+        if x == 0:
+            x = None
+        if y == 0:
+            y = None
+    # either x or y must be defined
+    if x is None and y is None:
+        return
+    # if angle is specified, x and y must be specified
+    if (x is None or y is None) and angle is not None:
+        return
+    # if x and y are specified, angle must be specified
+    if (x is not None and y is not None) and angle is None:
+        return
     normalized = {}
     if x is not None:
         normalized["x"] = x
