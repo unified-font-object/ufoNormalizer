@@ -476,7 +476,8 @@ def _normalizeDictGuideline(guideline):
             angle = float(angle)
         except ValueError:
             return
-    # <x=300 y=0> or <x=0 y=300> are allowed, and the 0 becomes None.
+    # The spec was ambiguous about y=0 or x=0, so don't raise an error here,
+    # instead, <x=300 y=0> or <x=0 y=300> are allowed, and the 0 becomes None.
     if angle is None:
         if x == 0:
             x = None
