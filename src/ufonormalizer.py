@@ -1086,13 +1086,13 @@ def _convertPlistElementToObject(element):
         key = None
         for subElement in element:
             if subElement.tag == "key":
-                key = xmlEscapeText(subElement.text)
+                key = subElement.text
             else:
                 obj[key] = _convertPlistElementToObject(subElement)
     elif tag == "string":
         if not element.text:
             return ""
-        return xmlEscapeText(element.text)
+        return element.text
     elif tag == "data":
         if not element.text:
             return plistlib.Data.fromBase64("")
