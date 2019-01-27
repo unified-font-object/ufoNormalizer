@@ -73,6 +73,8 @@ done
 
 Now, each time you commit, all `.ufo`s in your Git project will be normalized before being recorded by Git.
 
+Because this hook is within the immediate project, this configuration will only apply to the immediate project. You will need to update each project to use this Git hook to normalize UFOs elsewhere. If you wish for this hook to be added to all future git projects, you can [configure a global git template](https://coderwall.com/p/jp7d5q/create-a-global-git-commit-hook). However, this approach probably doesn't make sense if you work on projects that don't involve UFO files. 
+
 ### Enabling RoboFont's preference for normalizing on save
 
 If you are working within RoboFont, you can set it to normalize UFOs on save.
