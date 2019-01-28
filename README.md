@@ -82,6 +82,8 @@ If you are working within RoboFont, you can set it to normalize UFOs on save.
 Simply open the Scripting Window and run the following code:
 
 ```
+from mojo.UI import setDefault
+
 setDefault("shouldNormalizeOnSave", True)
 ```
 
