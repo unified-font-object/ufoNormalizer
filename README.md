@@ -35,7 +35,7 @@ Install these tools using the [pip](https://pip.pypa.io/en/stable/installing/) p
 pip install --upgrade ufonormalizer
 ```
 
-### Basic usage
+### Command line
 
 Use on the command line:
 
@@ -51,7 +51,7 @@ ufonormalizer --help
 
 Note: if you are working on a UFO within RoboFont and run ufoNormalizer on that UFO, RoboFont will notify you that the UFO has been updated externally. Simply accept this by selecting "Update."
 
-### Automatic usage
+### Automating via Git hooks
 
 Beyond basic command-line usage, ufoNormalizer can be used in an automated manner. 
 
