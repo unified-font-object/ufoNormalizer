@@ -20,9 +20,11 @@ RoboFont comes with ufoNormalizer pre-installed, and you can set a prefence to n
 Simply open the Scripting Window and run the following code:
 
 ```
-from mojo.UI import setDefault
+from mojo.UI import setDefault, getDefault
 
 setDefault("shouldNormalizeOnSave", True)
+
+print("shouldNormalizeOnSave is set to " + str(getDefault("shouldNormalizeOnSave")))
 ```
 
 ## Advanced usage
