@@ -15,7 +15,7 @@ Examples of formatting applied by ufoNormalizer include:
 
 ## Usage in RoboFont
 
-RoboFont comes with ufoNormalizer pre-installed, and you can set a prefence to normalize UFOs on save.
+RoboFont comes with ufoNormalizer pre-installed, and you can set a preference to normalize UFOs on save.
 
 Simply open the Scripting Window and run the following code:
 
