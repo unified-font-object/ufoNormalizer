@@ -1598,7 +1598,7 @@ def readImageReferences(lib):
 #
 # This was taken directly from the UFO 3 specification.
 
-illegalCharacters = "\" * + / : < > ? [ \ ] | \0".split(" ")
+illegalCharacters = '" * + / : < > ? [ \\ ] | \0'.split(" ")
 illegalCharacters += [chr(i) for i in range(1, 32)]
 illegalCharacters += [chr(0x7F)]
 reservedFileNames = "CON PRN AUX CLOCK$ NUL A:-Z: COM1".lower().split(" ")
