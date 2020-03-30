@@ -413,6 +413,23 @@ class UFONormalizerTest(unittest.TestCase):
         result = _normalizeDictGuideline(guideline)
         self.assertEqual(result, expected)
 
+    def test_normalizeFontInfoPlist_guidelines_angle_horizontal(self):
+        guideline = dict(x=1, y=2, angle=0)
+        expected = dict(y=2)
+        result = _normalizeDictGuideline(guideline)
+        self.assertEqual(result, expected)
+
+    def test_normalizeFontInfoPlist_guidelines_angle_vertical(self):
+        guideline = dict(x=1, y=2, angle=90)
+        expected = dict(x=1)
+        result = _normalizeDictGuideline(guideline)
+        self.assertEqual(result, expected)
+
+        guideline = dict(x=1, y=2, angle=270)
+        expected = dict(x=1)
+        result = _normalizeDictGuideline(guideline)
+        self.assertEqual(result, expected)
+
     def test_normalizeFontInfoPlist_guidelines_invalid_angle(self):
         guideline = dict(x=1, y=3, angle="invalid", name="test",
                          color="1,0,0,.5", identifier="TEST")
@@ -442,7 +459,7 @@ class UFONormalizerTest(unittest.TestCase):
 
     def test_normalizeFontInfoPlist_guidelines_zero_is_not_None(self):
         guideline = dict(x=0, y=0, angle=0)
-        expected = dict(x=0, y=0, angle=0)
+        expected = dict(y=0)
         result = _normalizeDictGuideline(guideline)
         self.assertEqual(result, expected)
 

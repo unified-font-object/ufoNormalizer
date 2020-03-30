@@ -498,7 +498,12 @@ def _normalizeDictGuideline(guideline):
     if y is not None:
         normalized["y"] = y
     if angle is not None:
-        normalized["angle"] = angle
+        if angle == 0:
+            del normalized["x"]
+        elif angle == 90 or angle == 270:
+            del normalized["y"]
+        else:
+            normalized["angle"] = angle
     if name is not None:
         normalized["name"] = name
     if color is not None:
