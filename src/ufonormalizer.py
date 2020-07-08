@@ -1182,11 +1182,10 @@ class XMLWriter(object):
         text = text.strip()
         text = xmlEscapeText(text)
         paragraphs = []
-        for paragraph in text.splitlines():
+        for paragraph in re.split(r"\n\t*", text):
             if not paragraph:
                 paragraphs.append("")
             else:
-                paragraph = re.sub(r"^\t", "", paragraph)
                 paragraph = textwrap.wrap(
                     paragraph.rstrip(),
                     width=xmlTextMaxLineLength,
