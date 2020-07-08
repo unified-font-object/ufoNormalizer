@@ -5,6 +5,7 @@ from __future__ import print_function, unicode_literals
 import time
 import os
 import shutil
+import re
 from xml.etree import cElementTree as ET
 import plistlib
 import textwrap
@@ -1185,6 +1186,7 @@ class XMLWriter(object):
             if not paragraph:
                 paragraphs.append("")
             else:
+                paragraph = re.sub(r"^\t", "", paragraph)
                 paragraph = textwrap.wrap(
                     paragraph.rstrip(),
                     width=xmlTextMaxLineLength,

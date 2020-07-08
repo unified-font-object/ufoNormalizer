@@ -836,6 +836,15 @@ class UFONormalizerTest(unittest.TestCase):
             writer.getText(),
             "<note>\n\tLine1\n\t\n\t    Line3\n</note>")
 
+        # Normalizer should not indent Line2 and Line3 more than already indented
+        element = ET.fromstring(
+            "<note>\n\tLine1\n\tLine2\n\tLine3\n</note>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifNote(element, writer)
+        self.assertEqual(
+            writer.getText(),
+            "<note>\n\tLine1\n\tLine2\n\tLine3\n</note>")
+
     def test_normalizeGLIF_note_undefined(self):
         element = ET.fromstring("<note></note>")
         writer = XMLWriter(declaration=None)
