@@ -5,7 +5,6 @@ from __future__ import print_function, unicode_literals
 import time
 import os
 import shutil
-import re
 from xml.etree import cElementTree as ET
 import plistlib
 import textwrap
@@ -159,10 +158,10 @@ else:
 class UFONormalizerError(Exception):
     pass
 
+NEWLINE_RE = re.compile(r"[\n|\r|\r\n]\t*")
 
 DEFAULT_FLOAT_PRECISION = 10
 FLOAT_FORMAT = "%%.%df" % DEFAULT_FLOAT_PRECISION
-
 
 def normalizeUFO(ufoPath, outputPath=None, onlyModified=True,
                  floatPrecision=DEFAULT_FLOAT_PRECISION, writeModTimes=True):
@@ -1179,10 +1178,10 @@ class XMLWriter(object):
         self.raw(line)
 
     def text(self, text):
-        text = text.strip()
+        text = textwrap.dedent(text)
         text = xmlEscapeText(text)
         paragraphs = []
-        for paragraph in re.split(r"\n\t*", text):
+        for paragraph in text.splitlines():
             if not paragraph:
                 paragraphs.append("")
             else:
