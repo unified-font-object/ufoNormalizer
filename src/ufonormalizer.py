@@ -1179,13 +1179,10 @@ class XMLWriter(object):
         self.raw(line)
 
     def text(self, text):
-        print("1 >>>", text)
         text = text.strip("\n")
         text = dedent_tabs(text)
         text = text.strip()
-        print("2 >>>", text)
         text = xmlEscapeText(text)
-        print("3 >>>", text)
         paragraphs = []
         # for paragraph in NEWLINE_RE.split(text):
         for paragraph in text.splitlines():
@@ -1203,7 +1200,6 @@ class XMLWriter(object):
                 )
                 paragraphs.extend(paragraph)
         for line in paragraphs:
-            print("4 >>>", line)
             self.raw(line)
 
     def simpleElement(self, tag, attrs={}, value=None):
