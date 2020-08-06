@@ -845,6 +845,44 @@ class UFONormalizerTest(unittest.TestCase):
             writer.getText(),
             "<note>\n\tLine1\n\tLine2\n\tLine3\n</note>")
 
+        # Normalizer should keep the extra tab in line 2
+        element = ET.fromstring(
+            "<note>\n\tLine1\n\t\tLine2\n\tLine3\n</note>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifNote(element, writer)
+        self.assertEqual(
+            writer.getText(),
+            "<note>\n\tLine1\n\t\tLine2\n\tLine3\n</note>")
+
+        # Normalizer should keep the extra spaces on line 2
+        element = ET.fromstring(
+            "<note>\n\tLine1\n\t    Line2\n\tLine3\n</note>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifNote(element, writer)
+        self.assertEqual(
+            writer.getText(),
+            "<note>\n\tLine1\n\t    Line2\n\tLine3\n</note>")
+
+        # Normalizer should remove the extra tab all lines have in common,
+        # but leave the additional tab on line 2
+        element = ET.fromstring(
+            "<note>\n\t\tLine1\n\t\t\tLine2\n\t\tLine3\n</note>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifNote(element, writer)
+        self.assertEqual(
+            writer.getText(),
+            "<note>\n\tLine1\n\t\tLine2\n\tLine3\n</note>")
+
+        # Normalizer should remove the extra 4-space all lines have in common,
+        # but leave the additional 4-space on line 2
+        element = ET.fromstring(
+            "<note>\n        Line1\n            Line2\n        Line3\n</note>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifNote(element, writer)
+        self.assertEqual(
+            writer.getText(),
+            "<note>\n\tLine1\n\t    Line2\n\tLine3\n</note>")
+
     def test_normalizeGLIF_note_undefined(self):
         element = ET.fromstring("<note></note>")
         writer = XMLWriter(declaration=None)

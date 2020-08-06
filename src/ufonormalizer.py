@@ -4,6 +4,7 @@ from __future__ import print_function, unicode_literals
 
 import time
 import os
+import re
 import shutil
 from xml.etree import cElementTree as ET
 import plistlib
@@ -1178,9 +1179,15 @@ class XMLWriter(object):
         self.raw(line)
 
     def text(self, text):
-        text = textwrap.dedent(text)
+        print("1 >>>", text)
+        text = text.strip("\n")
+        text = dedent_tabs(text)
+        text = text.strip()
+        print("2 >>>", text)
         text = xmlEscapeText(text)
+        print("3 >>>", text)
         paragraphs = []
+        # for paragraph in NEWLINE_RE.split(text):
         for paragraph in text.splitlines():
             if not paragraph:
                 paragraphs.append("")
@@ -1196,6 +1203,7 @@ class XMLWriter(object):
                 )
                 paragraphs.extend(paragraph)
         for line in paragraphs:
+            print("4 >>>", line)
             self.raw(line)
 
     def simpleElement(self, tag, attrs={}, value=None):
@@ -1357,6 +1365,64 @@ def xmlConvertFloat(value):
 
 def xmlConvertInt(value):
     return str(value)
+
+
+# ---------------
+# Text Operations
+# ---------------
+
+_whitespace_only_re = re.compile('^[\s\t]+$', re.MULTILINE)
+_leading_whitespace_re = re.compile('(^(?:\s{4}|\t)*)(?:[^\t\n])', re.MULTILINE)
+
+def dedent_tabs(text):
+    """
+    Based on `textwrap.dedent`, but modified to only work on tabs and 4-space indents
+
+    Remove any common leading tabs from every line in `text`.
+    This can be used to make triple-quoted strings line up with the left
+    edge of the display, while still presenting them in the source code
+    in indented form.
+
+    Entirely blank lines are normalized to a newline character.
+    """
+    # Look for the longest leading string of spaces and tabs common to
+    # all lines.
+    margin = None
+    text = _whitespace_only_re.sub('', text)
+    indents = _leading_whitespace_re.findall(text)
+    for indent in indents:
+        if margin is None:
+            margin = indent
+
+        # Current line more deeply indented than previous winner:
+        # no change (previous winner is still on top).
+        elif indent.startswith(margin):
+            pass
+
+        # Current line consistent with and no deeper than previous winner:
+        # it's the new winner.
+        elif margin.startswith(indent):
+            margin = indent
+
+        # Find the largest common whitespace between current line and previous
+        # winner.
+        else:
+            for i, (x, y) in enumerate(zip(margin, indent)):
+                if x != y:
+                    margin = margin[:i]
+                    break
+
+    # sanity check (testing/debugging only)
+    if 0 and margin:
+        for line in text.split("\n"):
+            assert not line or line.startswith(margin), \
+                   "line = %r, margin = %r" % (line, margin)
+
+    if margin:
+        text = re.sub(r'(?m)^' + margin, '', text)
+    return text
+
+
 
 # ---------------
 # Path Operations
