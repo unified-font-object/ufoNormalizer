@@ -159,8 +159,6 @@ else:
 class UFONormalizerError(Exception):
     pass
 
-NEWLINE_RE = re.compile(r"[\n|\r|\r\n]\t*")
-
 DEFAULT_FLOAT_PRECISION = 10
 FLOAT_FORMAT = "%%.%df" % DEFAULT_FLOAT_PRECISION
 
@@ -1184,7 +1182,6 @@ class XMLWriter(object):
         text = text.strip()
         text = xmlEscapeText(text)
         paragraphs = []
-        # for paragraph in NEWLINE_RE.split(text):
         for paragraph in text.splitlines():
             if not paragraph:
                 paragraphs.append("")
@@ -1367,8 +1364,8 @@ def xmlConvertInt(value):
 # Text Operations
 # ---------------
 
-_whitespace_only_re = re.compile('^[\s\t]+$', re.MULTILINE)
-_leading_whitespace_re = re.compile('(^(?:\s{4}|\t)*)(?:[^\t\n])', re.MULTILINE)
+WHITESPACE_ONLY_RE = re.compile('^[\s\t]+$', re.MULTILINE)
+LEADING_WHITESPACE_RE = re.compile('(^(?:\s{4}|\t)*)(?:[^\t\n])', re.MULTILINE)
 
 def dedent_tabs(text):
     """
@@ -1384,8 +1381,8 @@ def dedent_tabs(text):
     # Look for the longest leading string of spaces and tabs common to
     # all lines.
     margin = None
-    text = _whitespace_only_re.sub('', text)
-    indents = _leading_whitespace_re.findall(text)
+    text = WHITESPACE_ONLY_RE.sub('', text)
+    indents = LEADING_WHITESPACE_RE.findall(text)
     for indent in indents:
         if margin is None:
             margin = indent
