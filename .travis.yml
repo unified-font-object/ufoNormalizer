@@ -4,12 +4,14 @@ env:
     - TWINE_USERNAME="anthrotype"
     - secure: chwl41J38s5RFf3gouXeQzsbkQNDVBWISR/teT6fEOIdt7++T51Qe6lkPbaaz01PmvjF1i5X7Hbyg4JY238un3jhQRnNd4bAnB0rfcGEh1hwEmUV0zFEM1PdPP4ihAcnoi032z0ymN5OA71Qq967vcgM1vcTPL0aJIOi4T5MZZLTDmMcno588ZhMvJ6+kNsWSE9zM/rX3ba8ReB0XccWPLvMiV54VmOk5OtaLhTPIxMy0C3Gf7m5xrND7jnLeFbOw+JoarUQQlYRIGKsXUy5ed0d8JLE8dVHTtzt/zVKWA2wslvxXsRIGZCbW1C6YxXqpjyAhp3Xu7pFKxtPS9bkw3fz87/PXcFlNLe1zX/t1H8aaOTWe6+K6S8GbD95KcCnpHsQUFzvQxHqxJqX7xx+1CSoNalXbf0arnuN9y70JcXW6AnHSZUYzOZalFLp18qj24XHaWuoW7TMP/GdQLDRVDzs1cguC0Lf9W/Cxo/FzOMjUgOTE7iEQWIotfJsY8DIDatjA2rclNz7N7fg2rL9Bi5cPUVyCC5SJtrolfpFz2mNAy06pVlc7fdeeH/40wDm//wr2ZNl1DEiNDCNgfgijnCsobgAIJpT5CsMrgZmAzfxuqhTK8012qwqhVkF69M6aTPmLOTS/WzK1FSA5V1m4whdFWwrQXcqzq9kG2wEa54=
 install:
-  - pip install coveralls
+  - pip install coveralls flake8
 python:
-  - "2.7"
-  - "3.5"
   - "3.6"
+  - "3.7"
+  - "3.8"
+  - "3.9"
 script:
+  - flake8 --statistics --count
   - coverage run setup.py test
 after_success:
   - coveralls
