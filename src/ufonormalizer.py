@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
 
+import base64
 import time
 import os
 import re
@@ -117,7 +118,7 @@ except NameError:
 if hasattr(plistlib, "loads"):
 
     def _loads(data):
-        return plistlib.loads(data, use_builtin_types=False)
+        return plistlib.loads(data)
 
     def _dumps(plist):
         return plistlib.dumps(plist)
@@ -1102,8 +1103,8 @@ def _convertPlistElementToObject(element):
         return element.text
     elif tag == "data":
         if not element.text:
-            return plistlib.Data.fromBase64("")
-        return plistlib.Data.fromBase64(element.text)
+            return b''
+        return base64.b64decode(element.text)
     elif tag == "date":
         return _dateFromString(element.text)
     elif tag == "true":
@@ -1251,7 +1252,7 @@ class XMLWriter(object):
                 self._plistInt(data)
             except ValueError:
                 self._plistFloat(data)
-        elif isinstance(data, plistlib.Data):
+        elif isinstance(data, bytes):
             self._plistData(data)
         elif isinstance(data, datetime.datetime):
             self._plistDate(data)
@@ -1293,7 +1294,7 @@ class XMLWriter(object):
         self.simpleElement("date", value=data)
 
     def _plistData(self, data):
-        data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
+        data = base64.b64encode(data)
         if not data:
             self.simpleElement("data", value="")
         else:

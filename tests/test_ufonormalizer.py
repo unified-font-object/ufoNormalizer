@@ -1462,8 +1462,7 @@ class UFONormalizerTest(unittest.TestCase):
         element = ET.fromstring("<integer>1</integer>")
         self.assertEqual(_convertPlistElementToObject(element), 1)
         element = ET.fromstring("<data>YWJj</data>")
-        self.assertEqual(_convertPlistElementToObject(element),
-                         plistlib.Data(b'abc'))
+        self.assertEqual(_convertPlistElementToObject(element), b'abc')
 
     def test_main_verbose_or_quiet(self):
         stream = StringIO()
@@ -1792,7 +1791,7 @@ class XMLWriterTest(unittest.TestCase):
 
     def test_propertyListObject_data(self):
         writer = XMLWriter(declaration=None)
-        data = plistlib.Data(tobytes("abc"))
+        data = tobytes("abc")
         writer.propertyListObject(data)
         self.assertEqual(writer.getText(), '<data>\n\tYWJj\n</data>')
 
