@@ -1,24 +1,20 @@
 
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 import os
 import sys
 import unittest
 import tempfile
 import shutil
 import datetime
-import plistlib
-import base64
 from io import open
 from xml.etree import cElementTree as ET
 from ufonormalizer import (
     normalizeGLIF, normalizeGlyphsDirectoryNames, normalizeGlyphNames,
     subpathJoin, subpathSplit, subpathExists, subpathReadFile,
     subpathReadPlist, subpathWriteFile, subpathWritePlist, subpathRenameFile,
-    subpathRenameDirectory, subpathRenameDirectory, subpathRemoveFile,
-    subpathGetModTime, subpathNeedsRefresh, modTimeLibKey, storeModTimes,
-    readModTimes, UFONormalizerError, XMLWriter,
-    tobytes, userNameToFileName, handleClash1, handleClash2, xmlEscapeText,
+    subpathRemoveFile, subpathGetModTime, subpathNeedsRefresh, modTimeLibKey,
+    storeModTimes, readModTimes, UFONormalizerError, XMLWriter, tobytes,
+    userNameToFileName, handleClash1, handleClash2, xmlEscapeText,
     xmlEscapeAttribute, xmlConvertValue, xmlConvertFloat, xmlConvertInt,
     _normalizeGlifAnchor, _normalizeGlifGuideline, _normalizeGlifLib,
     _normalizeGlifNote, _normalizeFontInfoGuidelines, _normalizeGlifUnicode,
@@ -30,53 +26,12 @@ from ufonormalizer import (
     _normalizeGlifPointAttributesFormat2,
     _normalizeGlifComponentAttributesFormat2, _normalizeGlifTransformation,
     _normalizeColorString, _convertPlistElementToObject, _normalizePlistFile,
-    main, xmlDeclaration, plistDocType)
+    main, xmlDeclaration, plistDocType, _decode_base64)
 from ufonormalizer import __version__ as ufonormalizerVersion
 
-# Python 3.4 deprecated readPlistFromBytes and writePlistToBytes
-# Python 2 has readPlistFromString and writePlistToString
-try:
-    from plistlib import loads, dumps
-except ImportError:
-    try:
-        from plistlib import readPlistFromBytes as loads
-        from plistlib import writePlistToBytes as dumps
-    except ImportError:
-        from plistlib import readPlistFromString as loads
-        from plistlib import writePlistToString as dumps
-
-try:
-    # python 2: a stream of *byte* strings
-    from StringIO import StringIO
-except ImportError:
-    # Python 3: a stream of *unicode* strings
-    from io import StringIO
-
-try:
-    from tempfile import TemporaryDirectory  # Python 3 only
-except ImportError:
-    # backport for Python 2.7
-    class TemporaryDirectory(object):
-        """ Create and return a temporary directory. This has the same
-        behavior as mkdtemp but can be used as a context manager.
-
-        Adapted from tempfile.TemporaryDirectory (new in Python 3.2).
-        """
-        def __init__(self, suffix="", prefix="tmp", dir=None):
-            self._closed = False
-            self.name = tempfile.mkdtemp(suffix, prefix, dir)
-
-        def __enter__(self):
-            return self.name
-
-        def cleanup(self, _warn=False):
-            if self.name and not self._closed:
-                shutil.rmtree(self.name)
-                self._closed = True
-
-        def __exit__(self, exc, value, tb):
-            self.cleanup()
-
+from plistlib import loads, dumps
+from io import StringIO
+from tempfile import TemporaryDirectory
 
 GLIFFORMAT1 = '''\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -195,7 +150,8 @@ INFOPLIST_NO_GUIDELINES = '''\
 </plist>
 '''
 
-EMPTY_PLIST = "\n".join([xmlDeclaration, plistDocType, '<plist version="1.0"><dict></dict></plist>'])
+EMPTY_PLIST = "\n".join([xmlDeclaration, plistDocType,
+                         '<plist version="1.0"><dict></dict></plist>'])
 
 METAINFO_PLIST = "\n".join([xmlDeclaration, plistDocType, """\
 <plist version="1.0">
@@ -244,7 +200,7 @@ class UFONormalizerTest(unittest.TestCase):
 
     def _test_normalizeGlyphsDirectoryNames(self, oldLayers, expectedLayers):
         directory = tempfile.mkdtemp()
-        for layerName, subDirectory in oldLayers:
+        for _layerName, subDirectory in oldLayers:
             os.mkdir(os.path.join(directory, subDirectory))
         self.assertEqual(
             sorted(os.listdir(directory)),
@@ -1323,7 +1279,6 @@ class UFONormalizerTest(unittest.TestCase):
         _normalizeGlifOutlineFormat2(element, writer)
         self.assertEqual(writer.getText(), expected)
 
-
     def test_normalizeGlif_contour_format2_empty(self):
         contour = '''
         <contour>
@@ -1621,7 +1576,7 @@ class UFONormalizerTest(unittest.TestCase):
             data = subpathReadPlist(outdir, "lib.plist")
             self.assertEqual(
                 data['org.robofab.fontlab.customdata'],
-                base64.b64decode("""\
+                _decode_base64("""\
                 gAJ9cQFVA2xpYnECY3BsaXN0bGliCl9JbnRlcm5hbERpY3QKcQMpgXEEVSdj
                 b20uc2NocmlmdGdlc3RhbHR1bmcuR2x5cGhzLmxhc3RDaGFuZ2VxBVUTMjAx
                 Ny8wOS8yNiAwOToxMzoyMXEGc31xB2JzLg==
@@ -1643,7 +1598,7 @@ class XMLWriterTest(unittest.TestCase):
         writer = XMLWriter(declaration=None)
         writer.propertyListObject(["a"])
         self.assertEqual(writer.getText(),
-                        '<array>\n\t<string>a</string>\n</array>')
+                         '<array>\n\t<string>a</string>\n</array>')
 
         writer = XMLWriter(declaration=None)
         writer.propertyListObject([None])
@@ -1794,6 +1749,17 @@ class XMLWriterTest(unittest.TestCase):
         data = tobytes("abc")
         writer.propertyListObject(data)
         self.assertEqual(writer.getText(), '<data>\n\tYWJj\n</data>')
+
+    def test_propertyListObject_data_wrap(self):
+        writer = XMLWriter(declaration=None)
+        data = tobytes("XYZ" * 30)
+        writer.propertyListObject(data)
+        expected = "\n".join([
+            "<data>",
+            "\tWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFla",
+            "\tWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFlaWFla",
+            "</data>"])
+        self.assertEqual(writer.getText(), expected)
 
     def test_propertyListObject_none(self):
         writer = XMLWriter(declaration=None)
@@ -2153,6 +2119,7 @@ class NameTranslationTest(unittest.TestCase):
         self.assertEqual(
             handleClash2(existing=e, prefix=prefix, suffix=suffix),
             '00000.2.0000000000')
+
 
 if __name__ == "__main__":
     unittest.main()
