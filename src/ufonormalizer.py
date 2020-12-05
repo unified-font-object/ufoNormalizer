@@ -1,7 +1,7 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
 
+import binascii
 import time
 import os
 import re
@@ -23,13 +23,13 @@ import logging
 """
 
 __version__ = "0.4.3.dev0"
-description = """
-UFO Normalizer (version %s):
+description = f"""
+UFO Normalizer (version {__version__}):
 
 This tool processes the contents of a UFO and normalizes
 all possible files to a standard XML formatting, data
 structure and file naming scheme.
-""" % __version__
+"""
 
 
 log = logging.getLogger(__name__)
@@ -39,14 +39,37 @@ def main(args=None):
     import argparse
 
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("input", help="Path to a UFO to normalize.", nargs="?")
-    parser.add_argument("-t", "--test", help="Run the normalizer's internal tests.", action="store_true")
-    parser.add_argument("-o", "--output", help="Output path. If not given, the input path will be used.")
-    parser.add_argument("-a", "--all", help="Normalize all files in the UFO. By default, only files modified since the previous normalization will be processed.", action="store_true")
-    parser.add_argument("-v", "--verbose", help="Print more info to console.", action="store_true")
-    parser.add_argument("-q", "--quiet", help="Suppress all non-error messages.", action="store_true")
-    parser.add_argument("--float-precision", type=int, default=DEFAULT_FLOAT_PRECISION, help="Round floats to the specified number of decimal places (default is %d). The value -1 means no rounding (i.e. use built-in repr()." % DEFAULT_FLOAT_PRECISION)
-    parser.add_argument("-m", "--no-mod-times", help="Do not write normalization time stamps.", action="store_true")
+    parser.add_argument("input",
+                        help="Path to a UFO to normalize.",
+                        nargs="?")
+    parser.add_argument("-t", "--test",
+                        help="Run the normalizer's internal tests.",
+                        action="store_true")
+    parser.add_argument("-o", "--output",
+                        help="Output path. If not given, "
+                             "the input path will be used.")
+    parser.add_argument("-a", "--all",
+                        help="Normalize all files in the UFO. By default, "
+                             "only files modified since the previous "
+                             "normalization will be processed.",
+                        action="store_true")
+    parser.add_argument("-v", "--verbose",
+                        help="Print more info to console.",
+                        action="store_true")
+    parser.add_argument("-q", "--quiet",
+                        help="Suppress all non-error messages.",
+                        action="store_true")
+    parser.add_argument("--float-precision",
+                        type=int,
+                        default=DEFAULT_FLOAT_PRECISION,
+                        help="Round floats to the specified number of decimal "
+                             f"places (default is {DEFAULT_FLOAT_PRECISION}). "
+                             "The value -1 means no "
+                             "rounding (i.e. use built-in "
+                             "repr().")
+    parser.add_argument("-m", "--no-mod-times",
+                        help="Do not write normalization time stamps.",
+                        action="store_true")
     args = parser.parse_args(args)
 
     if args.test:
@@ -63,9 +86,9 @@ def main(args=None):
     outputPath = args.output
     onlyModified = not args.all
     if not os.path.exists(inputPath):
-        parser.error('Input path does not exist: "%s".' % inputPath)
+        parser.error(f'Input path does not exist: "{ inputPath }".')
     if os.path.splitext(inputPath)[-1].lower() != ".ufo":
-        parser.error('Input path is not a UFO: "%s".' % inputPath)
+        parser.error(f'Input path is not a UFO: "{ inputPath }".')
 
     if args.float_precision >= 0:
         floatPrecision = args.float_precision
@@ -94,45 +117,33 @@ def main(args=None):
 modTimeLibKey = "org.unifiedfontobject.normalizer.modTimes"
 imageReferencesLibKey = "org.unifiedfontobject.normalizer.imageReferences"
 
-# Differences between Python 2 and Python 3
-# Python 3 does not have long, basestring, unicode
-try:
-    long
-except NameError:
-    long = int
 
-try:
-    basestring
-except NameError:
-    basestring = str
+def _loads(data):
+    return plistlib.loads(data)
 
-try:
-    unicode
-except NameError:
-    unicode = str
 
-# Python 3.4 deprecated plistlib.readPlistFromBytes for loads.
-# Python 2 does not have plistlib.readPlistFromBytes it has
-# plistlib.readPlistFromString instead.
-if hasattr(plistlib, "loads"):
+def _dumps(plist):
+    return plistlib.dumps(plist)
 
-    def _loads(data):
-        return plistlib.loads(data, use_builtin_types=False)
 
-    def _dumps(plist):
-        return plistlib.dumps(plist)
-elif hasattr(plistlib, "readPlistFromBytes"):
-    def _loads(data):
-        return plistlib.readPlistFromBytes(tobytes(data))
+# Python 3.9 deprecated plistlib.Data. The following _*code_base64 functions
+# preserve some behavior related to that API.
+def _decode_base64(s):
+    if isinstance(s, str):
+        return binascii.a2b_base64(s.encode("utf-8"))
 
-    def _dumps(plist):
-        return plistlib.writePlistToBytes(plist)
-else:
-    def _loads(data):
-        return plistlib.readPlistFromString(data)
+    else:
+        return binascii.a2b_base64(s)
 
-    def _dumps(plist):
-        return plistlib.writePlistToString(plist)
+
+def _encode_base64(s, maxlinelength=76):
+    # copied from base64.encodebytes(), with added maxlinelength argument
+    maxbinsize = (maxlinelength//4)*3
+    pieces = []
+    for i in range(0, len(s), maxbinsize):
+        chunk = s[i: i + maxbinsize]
+        pieces.append(binascii.b2a_base64(chunk))
+    return b''.join(pieces)
 
 
 # from fontTools.misc.py23
@@ -145,10 +156,11 @@ def tobytes(s, encoding='ascii', errors='strict'):
 
 
 def tounicode(s, encoding='ascii', errors='strict'):
-    if not isinstance(s, unicode):
+    if not isinstance(s, str):
         return s.decode(encoding, errors)
     else:
         return s
+
 
 if str == bytes:
     tostr = tobytes
@@ -159,8 +171,10 @@ else:
 class UFONormalizerError(Exception):
     pass
 
+
 DEFAULT_FLOAT_PRECISION = 10
 FLOAT_FORMAT = "%%.%df" % DEFAULT_FLOAT_PRECISION
+
 
 def normalizeUFO(ufoPath, outputPath=None, onlyModified=True,
                  floatPrecision=DEFAULT_FLOAT_PRECISION, writeModTimes=True):
@@ -180,18 +194,22 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True,
         ufoPath = outputPath
     # get the UFO format version
     if not subpathExists(ufoPath, "metainfo.plist"):
-        raise UFONormalizerError("Required metainfo.plist file not in %s." % ufoPath)
+        raise UFONormalizerError(f"Required metainfo.plist file not in "
+                                 f"{ufoPath}")
     metaInfo = subpathReadPlist(ufoPath, "metainfo.plist")
     formatVersion = metaInfo.get("formatVersion")
     if formatVersion is None:
-        raise UFONormalizerError("Required formatVersion value not defined in in metainfo.plist in %s." % ufoPath)
+        raise UFONormalizerError(f"Required formatVersion value not defined "
+                                 f"in metainfo.plist in {ufoPath}")
     try:
         fV = int(formatVersion)
         formatVersion = fV
     except ValueError:
-        raise UFONormalizerError("Required formatVersion value not properly formatted in metainfo.plist in %s." % ufoPath)
+        raise UFONormalizerError(f"Required formatVersion value not properly "
+                                 f"formatted in metainfo.plist in {ufoPath}")
     if formatVersion > 3:
-        raise UFONormalizerError("Unsupported UFO format (%d) in %s." % (formatVersion, ufoPath))
+        raise UFONormalizerError(f"Unsupported UFO format "
+                                 f"({formatVersion}) in {ufoPath}")
     # load the font lib
     if not subpathExists(ufoPath, "lib.plist"):
         fontLib = {}
@@ -212,8 +230,10 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True,
         normalizeGlyphsDirectoryNames(ufoPath)
         if subpathExists(ufoPath, "layercontents.plist"):
             layerContents = subpathReadPlist(ufoPath, "layercontents.plist")
-            for layerName, layerDirectory in layerContents:
-                layerReferencedImages = normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=onlyModified, writeModTimes=writeModTimes)
+            for _layerName, layerDirectory in layerContents:
+                layerReferencedImages = normalizeGlyphsDirectory(
+                    ufoPath, layerDirectory,
+                    onlyModified=onlyModified, writeModTimes=writeModTimes)
                 referencedImages |= layerReferencedImages
         imagesToPurge = availableImages - referencedImages
         purgeImagesDirectory(ufoPath, imagesToPurge)
@@ -233,6 +253,7 @@ def normalizeUFO(ufoPath, outputPath=None, onlyModified=True,
         subpathWritePlist(fontLib, ufoPath, "lib.plist")
     if subpathExists(ufoPath, "lib.plist"):
         normalizeLibPlist(ufoPath)
+
 
 # ------
 # Layers
@@ -260,7 +281,9 @@ def normalizeGlyphsDirectoryNames(ufoPath):
         if oldLayerDirectory == "glyphs":
             newLayerDirectory = "glyphs"
         else:
-            newLayerDirectory = userNameToFileName(unicode(layerName), newLayerDirectories, prefix="glyphs.")
+            newLayerDirectory = userNameToFileName(layerName,
+                                                   newLayerDirectories,
+                                                   prefix="glyphs.")
         newLayerDirectories.add(newLayerDirectory.lower())
         newLayerMapping[layerName] = newLayerDirectory
     # don't do a direct rename because an old directory
@@ -270,8 +293,9 @@ def normalizeGlyphsDirectoryNames(ufoPath):
         oldLayerDirectory = oldLayerMapping[layerName]
         if newLayerDirectory == oldLayerDirectory:
             continue
-        log.debug('Normalizing "%s" layer directory name to "%s".', layerName, newLayerDirectory)
-        tempDirectory = "org.unifiedfontobject.normalizer.%d" % index
+        log.debug('Normalizing "%s" layer directory name to "%s".',
+                  layerName, newLayerDirectory)
+        tempDirectory = f"org.unifiedfontobject.normalizer.{index}"
         subpathRenameDirectory(ufoPath, oldLayerDirectory, tempDirectory)
         fromTempMapping[tempDirectory] = newLayerDirectory
     for tempDirectory, newLayerDirectory in fromTempMapping.items():
@@ -295,7 +319,9 @@ def normalizeUFO1And2GlyphsDirectory(ufoPath, modTimes):
             normalizeGLIF(ufoPath, "glyphs", fileName)
             modTimes[location] = subpathGetModTime(ufoPath, "glyphs", fileName)
 
-def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True, writeModTimes=True):
+
+def normalizeGlyphsDirectory(ufoPath, layerDirectory,
+                             onlyModified=True, writeModTimes=True):
     if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
         layerInfo = subpathReadPlist(ufoPath, layerDirectory, "layerinfo.plist")
     else:
@@ -331,9 +357,12 @@ def normalizeGlyphsDirectory(ufoPath, layerDirectory, onlyModified=True, writeMo
     referencedImages = set(imageReferences.values())
     return referencedImages
 
+
 def normalizeLayerInfoPlist(ufoPath, layerDirectory):
     if subpathExists(ufoPath, layerDirectory, "layerinfo.plist"):
-        _normalizePlistFile({}, ufoPath, *[layerDirectory, "layerinfo.plist"], preprocessor=_normalizeLayerInfoColor)
+        _normalizePlistFile({}, ufoPath, *[layerDirectory, "layerinfo.plist"],
+                            preprocessor=_normalizeLayerInfoColor)
+
 
 def _normalizeLayerInfoColor(obj):
     """
@@ -344,6 +373,7 @@ def _normalizeLayerInfoColor(obj):
         color = _normalizeColorString(color)
         if color is not None:
             obj["color"] = color
+
 
 def normalizeGlyphNames(ufoPath, layerDirectory):
     """
@@ -359,7 +389,7 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
     newGlyphMapping = {}
     newFileNames = set()
     for glyphName in sorted(oldGlyphMapping.keys()):
-        newFileName = userNameToFileName(unicode(glyphName), newFileNames, suffix=".glif")
+        newFileName = userNameToFileName(str(glyphName), newFileNames, suffix=".glif")
         newFileNames.add(newFileName.lower())
         newGlyphMapping[glyphName] = newFileName
     # don't do a direct rewrite in case an old file has
@@ -369,16 +399,21 @@ def normalizeGlyphNames(ufoPath, layerDirectory):
         oldFileName = oldGlyphMapping[glyphName]
         if newFileName == oldFileName:
             continue
-        tempFileName = "org.unifiedfontobject.normalizer.%d" % index
-        subpathRenameFile(ufoPath, (layerDirectory, oldFileName), (layerDirectory, tempFileName))
+        tempFileName = f"org.unifiedfontobject.normalizer.{index}"
+        subpathRenameFile(ufoPath,
+                          (layerDirectory, oldFileName),
+                          (layerDirectory, tempFileName))
         fromTempMapping[tempFileName] = newFileName
     for tempFileName, newFileName in fromTempMapping.items():
-        subpathRenameFile(ufoPath, (layerDirectory, tempFileName), (layerDirectory, newFileName))
+        subpathRenameFile(ufoPath,
+                          (layerDirectory, tempFileName),
+                          (layerDirectory, newFileName))
     # update contents.plist
     subpathWritePlist(newGlyphMapping, ufoPath, layerDirectory, "contents.plist")
     # normalize contents.plist
     _normalizePlistFile({}, ufoPath, layerDirectory, "contents.plist", removeEmpty=False)
     return newGlyphMapping
+
 
 def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
     import tempfile
@@ -397,6 +432,7 @@ def _test_normalizeGlyphNames(oldGlyphMapping, expectedGlyphMapping):
     assert subpathReadPlist(directory, layerDirectory, "contents.plist") == newGlyphMapping
     shutil.rmtree(directory)
     return newGlyphMapping == expectedGlyphMapping
+
 
 # ---------------
 # Top-Level Files
@@ -423,15 +459,17 @@ def _normalizePlistFile(modTimes, ufoPath, *subpath, **kwargs):
             if subpath[-1] in modTimes:
                 del modTimes[subpath[-1]]
 
-# metainfo.plist
 
+# metainfo.plist
 def normalizeMetaInfoPlist(ufoPath, modTimes):
     _normalizePlistFile(modTimes, ufoPath, "metainfo.plist", removeEmpty=False)
 
-# fontinfo.plist
 
+# fontinfo.plist
 def normalizeFontInfoPlist(ufoPath, modTimes):
-    _normalizePlistFile(modTimes, ufoPath, "fontinfo.plist", preprocessor=_normalizeFontInfoGuidelines)
+    _normalizePlistFile(modTimes, ufoPath, "fontinfo.plist",
+                        preprocessor=_normalizeFontInfoGuidelines)
+
 
 def _normalizeFontInfoGuidelines(obj):
     """
@@ -446,6 +484,7 @@ def _normalizeFontInfoGuidelines(obj):
         if guideline is not None:
             normalized.append(guideline)
     obj["guidelines"] = normalized
+
 
 def _normalizeDictGuideline(guideline):
     """
@@ -508,25 +547,30 @@ def _normalizeDictGuideline(guideline):
         normalized["identifier"] = identifier
     return normalized
 
+
 # groups.plist
 
 def normalizeGroupsPlist(ufoPath, modTimes):
     _normalizePlistFile(modTimes, ufoPath, "groups.plist")
+
 
 # kerning.plist
 
 def normalizeKerningPlist(ufoPath, modTimes):
     _normalizePlistFile(modTimes, ufoPath, "kerning.plist")
 
+
 # layercontents.plist
 
 def normalizeLayerContentsPlist(ufoPath, modTimes):
     _normalizePlistFile(modTimes, ufoPath, "layercontents.plist", removeEmpty=False)
 
+
 # lib.plist
 
 def normalizeLibPlist(ufoPath):
     _normalizePlistFile({}, ufoPath, "lib.plist")
+
 
 # -----------------
 # XML Normalization
@@ -544,9 +588,10 @@ def normalizePropertyList(data, preprocessor=None):
     writer.raw("")
     return writer.getText()
 
+
 # GLIF
 
-def normalizeGLIFString(text, glifPath=None, imageFileRef=[]):
+def normalizeGLIFString(text, glifPath=None, imageFileRef=None):
     tree = ET.fromstring(text)
     glifVersion = tree.attrib.get("format")
     if glifVersion is None:
@@ -567,6 +612,10 @@ def normalizeGLIFString(text, glifPath=None, imageFileRef=[]):
     anchors = []
     outline = None
     lib = None
+
+    if imageFileRef is None:
+        imageFileRef = []
+
     for element in tree:
         tag = element.tag
         if tag == "advance":
@@ -613,6 +662,7 @@ def normalizeGLIFString(text, glifPath=None, imageFileRef=[]):
     writer.raw("")
     return writer.getText()
 
+
 def normalizeGLIF(ufoPath, *subpath):
     """
     - Normalize the mark color if specified.
@@ -637,6 +687,7 @@ def normalizeGLIF(ufoPath, *subpath):
     imageFileName = imageFileRef[0] if imageFileRef else None
     return imageFileName
 
+
 def _normalizeGlifUnicode(element, writer):
     """
     - Don't write unicode element if hex attribute is not defined.
@@ -646,15 +697,16 @@ def _normalizeGlifUnicode(element, writer):
     v = element.attrib.get("hex")
     # INVALID DATA POSSIBILITY: no hex value
     if v:
-    # INVALID DATA POSSIBILITY: invalid hex value
+        # INVALID DATA POSSIBILITY: invalid hex value
         try:
             d = int(v, 16)
-            v = "%04X" % d
+            v = f"{d:04X}"
         except ValueError:
             return
     else:
         return
     writer.simpleElement("unicode", attrs=dict(hex=v))
+
 
 def _normalizeGlifAdvance(element, writer):
     """
@@ -680,6 +732,7 @@ def _normalizeGlifAdvance(element, writer):
         return
     writer.simpleElement("advance", attrs=attrs)
 
+
 def _normalizeGlifImage(element, writer):
     """
     - Don't write if fileName is not defined.
@@ -698,6 +751,7 @@ def _normalizeGlifImage(element, writer):
     if color is not None:
         attrs["color"] = _normalizeColorString(color)
     writer.simpleElement("image", attrs=attrs)
+
 
 def _normalizeGlifAnchor(element, writer):
     """
@@ -732,6 +786,7 @@ def _normalizeGlifAnchor(element, writer):
         attrs["identifier"] = identifier
     writer.simpleElement("anchor", attrs=attrs)
 
+
 def _normalizeGlifGuideline(element, writer):
     """
     - Follow general guideline normalization rules.
@@ -746,6 +801,7 @@ def _normalizeGlifGuideline(element, writer):
     normalized = _normalizeDictGuideline(converted)
     if normalized is not None:
         writer.simpleElement("guideline", attrs=normalized)
+
 
 def _normalizeGlifLib(element, writer):
     """
@@ -765,6 +821,7 @@ def _normalizeGlifLib(element, writer):
         writer.propertyListObject(obj)
         writer.endElement("lib")
 
+
 def _normalizeGlifNote(element, writer):
     """
     - Don't write an empty element.
@@ -777,6 +834,7 @@ def _normalizeGlifNote(element, writer):
     writer.beginElement("note")
     writer.text(value)
     writer.endElement("note")
+
 
 def _normalizeGlifOutlineFormat1(element, writer):
     """
@@ -832,6 +890,7 @@ def _normalizeGlifOutlineFormat1(element, writer):
         writer.endElement("contour")
     writer.endElement("outline")
 
+
 def _normalizeGlifContourFormat1(element):
     """
     - Don't write unknown subelements.
@@ -857,6 +916,7 @@ def _normalizeGlifContourFormat1(element):
     # contour
     contour = dict(type="contour", points=points)
     return contour
+
 
 def _normalizeGlifPointAttributesFormat1(element):
     """
@@ -898,6 +958,7 @@ def _normalizeGlifPointAttributesFormat1(element):
         attrs["name"] = name
     return attrs
 
+
 def _normalizeGlifComponentFormat1(element):
     """
     - Don't write if base is undefined.
@@ -910,6 +971,7 @@ def _normalizeGlifComponentFormat1(element):
         return
     component["type"] = "component"
     return component
+
 
 def _normalizeGlifComponentAttributesFormat1(element):
     """
@@ -927,6 +989,7 @@ def _normalizeGlifComponentAttributesFormat1(element):
     transformation = _normalizeGlifTransformation(element)
     attrs.update(transformation)
     return attrs
+
 
 def _normalizeGlifOutlineFormat2(element, writer):
     """
@@ -965,6 +1028,7 @@ def _normalizeGlifOutlineFormat2(element, writer):
             writer.simpleElement("component", attrs=obj)
     writer.endElement("outline")
 
+
 def _normalizeGlifContourFormat2(element):
     """
     - Don't write unknown subelements.
@@ -988,6 +1052,7 @@ def _normalizeGlifContourFormat2(element):
         contour["identifier"] = identifier
     return contour
 
+
 def _normalizeGlifPointAttributesFormat2(element):
     """
     - Follow same rules as Format 1, but allow an identifier attribute.
@@ -997,6 +1062,7 @@ def _normalizeGlifPointAttributesFormat2(element):
     if identifier is not None:
         attrs["identifier"] = identifier
     return attrs
+
 
 def _normalizeGlifComponentFormat2(element):
     """
@@ -1010,6 +1076,7 @@ def _normalizeGlifComponentFormat2(element):
     component["type"] = "component"
     return component
 
+
 def _normalizeGlifComponentAttributesFormat2(element):
     """
     - Follow same rules as Format 1, but allow an identifier attribute.
@@ -1020,6 +1087,7 @@ def _normalizeGlifComponentAttributesFormat2(element):
         attrs["identifier"] = identifier
     return attrs
 
+
 _glifDefaultTransformation = dict(
     xScale=1,
     xyScale=0,
@@ -1028,6 +1096,7 @@ _glifDefaultTransformation = dict(
     xOffset=0,
     yOffset=0
 )
+
 
 def _normalizeGlifTransformation(element):
     """
@@ -1043,6 +1112,7 @@ def _normalizeGlifTransformation(element):
         if value != default:
             attrs[attr] = value
     return attrs
+
 
 def _normalizeColorString(value):
     """
@@ -1062,10 +1132,14 @@ def _normalizeColorString(value):
     color = (xmlConvertFloat(i) for i in (r, g, b, a))
     return ",".join(color)
 
+
 # Adapted from plistlib.datetime._date_from_string()
 def _dateFromString(text):
     import re
-    _dateParser = re.compile(r"(?P<year>\d\d\d\d)(?:-(?P<month>\d\d)(?:-(?P<day>\d\d)(?:T(?P<hour>\d\d)(?::(?P<minute>\d\d)(?::(?P<second>\d\d))?)?)?)?)?Z")
+    _dateParser = re.compile(r"(?P<year>\d\d\d\d)(?:-(?P<month>\d\d)"
+                             r"(?:-(?P<day>\d\d)(?:T(?P<hour>\d\d)"
+                             r"(?::(?P<minute>\d\d)"
+                             r"(?::(?P<second>\d\d))?)?)?)?)?Z")
     gd = _dateParser.match(text).groupdict()
     lst = []
     for key in ('year', 'month', 'day', 'hour', 'minute', 'second'):
@@ -1075,10 +1149,12 @@ def _dateFromString(text):
         lst.append(int(val))
     return datetime.datetime(*lst)
 
+
 def _dateToString(data):
-    return '%04d-%02d-%02dT%02d:%02d:%02dZ' % (data.year, data.month,
-                                               data.day, data.hour,
-                                               data.minute, data.second)
+    return (f'{data.year:04d}-{data.month:02d}-'
+            f'{data.day:02d}T{data.hour:02d}:'
+            f'{data.minute:02d}:{data.second:02d}Z')
+
 
 def _convertPlistElementToObject(element):
     # INVALID DATA POSSIBILITY: invalid value string
@@ -1102,8 +1178,8 @@ def _convertPlistElementToObject(element):
         return element.text
     elif tag == "data":
         if not element.text:
-            return plistlib.Data.fromBase64("")
-        return plistlib.Data.fromBase64(element.text)
+            return b''
+        return binascii.a2b_base64(element.text)
     elif tag == "date":
         return _dateFromString(element.text)
     elif tag == "true":
@@ -1116,10 +1192,11 @@ def _convertPlistElementToObject(element):
         return int(element.text)
     return obj
 
-# XML Writer
 
+# XML Writer
 xmlDeclaration = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-plistDocType = "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
+plistDocType = ("<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+                "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">")
 xmlTextMaxLineLength = 70
 xmlIndent = "\t"
 xmlLineBreak = "\n"
@@ -1146,6 +1223,7 @@ d = {}
 for index, attr in enumerate(xmlAttributeOrder):
     d[attr] = index
 xmlAttributeOrder = d
+
 
 class XMLWriter(object):
 
@@ -1199,7 +1277,7 @@ class XMLWriter(object):
         for line in paragraphs:
             self.raw(line)
 
-    def simpleElement(self, tag, attrs={}, value=None):
+    def simpleElement(self, tag, attrs=None, value=None):
         if attrs:
             attrs = self.attributesToString(attrs)
             line = "<%s %s" % (tag, attrs)
@@ -1211,7 +1289,7 @@ class XMLWriter(object):
             line = "%s/>" % line
         self.raw(line)
 
-    def beginElement(self, tag, attrs={}):
+    def beginElement(self, tag, attrs=None):
         if attrs:
             attrs = self.attributesToString(attrs)
             line = "<%s %s>" % (tag, attrs)
@@ -1238,11 +1316,11 @@ class XMLWriter(object):
             self._plistArray(data)
         elif isinstance(data, dict):
             self._plistDict(data)
-        elif isinstance(data, basestring):
+        elif isinstance(data, str):
             self._plistString(data)
         elif isinstance(data, bool):
             self._plistBoolean(data)
-        elif isinstance(data, (int, long)):
+        elif isinstance(data, int):
             self._plistInt(data)
         elif isinstance(data, float):
             dataStr = xmlConvertFloat(data)
@@ -1251,12 +1329,13 @@ class XMLWriter(object):
                 self._plistInt(data)
             except ValueError:
                 self._plistFloat(data)
-        elif isinstance(data, plistlib.Data):
+        elif isinstance(data, bytes):
             self._plistData(data)
         elif isinstance(data, datetime.datetime):
             self._plistDate(data)
         else:
-            raise UFONormalizerError("Unknown data type in property list: %s" % repr(type(data)))
+            raise UFONormalizerError(f"Unknown data type in property list: "
+                                     f"{repr(type(data))}")
 
     def _plistArray(self, data):
         self.beginElement("array")
@@ -1293,7 +1372,7 @@ class XMLWriter(object):
         self.simpleElement("date", value=data)
 
     def _plistData(self, data):
-        data = data.asBase64(maxlinelength=xmlTextMaxLineLength)
+        data = _encode_base64(data, maxlinelength=xmlTextMaxLineLength)
         if not data:
             self.simpleElement("data", value="")
         else:
@@ -1315,7 +1394,7 @@ class XMLWriter(object):
             (xmlAttributeOrder.get(attr, 100), attr, value) for (attr, value) in attrs.items()
         ]
         formatted = []
-        for index, attr, value in sorted(sorter):
+        for _index, attr, value in sorted(sorter):
             attr = xmlEscapeAttribute(attr)
             value = xmlConvertValue(value)
             pair = "%s=\"%s\"" % (attr, value)
@@ -1330,10 +1409,12 @@ def xmlEscapeText(text):
         text = text.replace(">", "&gt;")
     return text
 
+
 def xmlEscapeAttribute(text):
     text = xmlEscapeText(text)
     text = text.replace("\"", "&quot;")
     return text
+
 
 def xmlConvertValue(value):
     if isinstance(value, float):
@@ -1342,6 +1423,7 @@ def xmlConvertValue(value):
         return xmlConvertInt(value)
     value = xmlEscapeText(value)
     return value
+
 
 def xmlConvertFloat(value):
     if FLOAT_FORMAT is None:
@@ -1356,6 +1438,7 @@ def xmlConvertFloat(value):
             return xmlConvertInt(int(value))
     return string
 
+
 def xmlConvertInt(value):
     return str(value)
 
@@ -1364,8 +1447,9 @@ def xmlConvertInt(value):
 # Text Operations
 # ---------------
 
-WHITESPACE_ONLY_RE = re.compile('^[\s\t]+$', re.MULTILINE)
-LEADING_WHITESPACE_RE = re.compile('(^(?:\s{4}|\t)*)(?:[^\t\n])', re.MULTILINE)
+WHITESPACE_ONLY_RE = re.compile(r'^[\s\t]+$', re.MULTILINE)
+LEADING_WHITESPACE_RE = re.compile(r'(^(?:\s{4}|\t)*)(?:[^\t\n])', re.MULTILINE)
+
 
 def dedent_tabs(text):
     """
@@ -1416,7 +1500,6 @@ def dedent_tabs(text):
     return text
 
 
-
 # ---------------
 # Path Operations
 # ---------------
@@ -1429,13 +1512,15 @@ def duplicateUFO(inPath, outPath):
         shutil.rmtree(outPath)
     shutil.copytree(inPath, outPath)
 
+
 def subpathJoin(ufoPath, *subpath):
     """
     Join path parts.
     """
-    if not isinstance(subpath, basestring):
+    if not isinstance(subpath, str):
         subpath = os.path.join(*subpath)
     return os.path.join(ufoPath, subpath)
+
 
 def subpathSplit(path):
     """
@@ -1443,12 +1528,14 @@ def subpathSplit(path):
     """
     return os.path.split(path)
 
+
 def subpathExists(ufoPath, *subpath):
     """
     Get a boolean indicating if a path exists.
     """
     path = subpathJoin(ufoPath, *subpath)
     return os.path.exists(path)
+
 
 # read
 
@@ -1461,6 +1548,7 @@ def subpathReadFile(ufoPath, *subpath):
         text = f.read()
     return text
 
+
 def subpathReadPlist(ufoPath, *subpath):
     """
     Read the contents of a property list
@@ -1470,6 +1558,7 @@ def subpathReadPlist(ufoPath, *subpath):
     with open(path, "rb") as f:
         data = f.read()
     return _loads(data)
+
 
 # write
 
@@ -1492,6 +1581,7 @@ def subpathWriteFile(text, ufoPath, *subpath):
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
 
+
 def subpathWritePlist(data, ufoPath, *subpath):
     """
     Write a Python object to a property list.
@@ -1512,31 +1602,34 @@ def subpathWritePlist(data, ufoPath, *subpath):
         with open(path, "wb") as f:
             f.write(data)
 
+
 # rename
 
 def subpathRenameFile(ufoPath, fromSubpath, toSubpath):
     """
     Rename a file.
     """
-    if isinstance(fromSubpath, basestring):
+    if isinstance(fromSubpath, str):
         fromSubpath = [fromSubpath]
-    if isinstance(toSubpath, basestring):
+    if isinstance(toSubpath, str):
         toSubpath = [toSubpath]
     inPath = subpathJoin(ufoPath, *fromSubpath)
     outPath = subpathJoin(ufoPath, *toSubpath)
     os.rename(inPath, outPath)
 
+
 def subpathRenameDirectory(ufoPath, fromSubpath, toSubpath):
     """
     Rename a directory.
     """
-    if isinstance(fromSubpath, basestring):
+    if isinstance(fromSubpath, str):
         fromSubpath = [fromSubpath]
-    if isinstance(toSubpath, basestring):
+    if isinstance(toSubpath, str):
         toSubpath = [toSubpath]
     inPath = subpathJoin(ufoPath, *fromSubpath)
     outPath = subpathJoin(ufoPath, *toSubpath)
     shutil.move(inPath, outPath)
+
 
 # remove
 
@@ -1548,6 +1641,7 @@ def subpathRemoveFile(ufoPath, *subpath):
         path = subpathJoin(ufoPath, *subpath)
         os.remove(path)
 
+
 # mod times
 
 def subpathGetModTime(ufoPath, *subpath):
@@ -1556,6 +1650,7 @@ def subpathGetModTime(ufoPath, *subpath):
     """
     path = subpathJoin(ufoPath, *subpath)
     return os.path.getmtime(path)
+
 
 def subpathNeedsRefresh(modTimes, ufoPath, *subPath):
     """
@@ -1568,6 +1663,7 @@ def subpathNeedsRefresh(modTimes, ufoPath, *subPath):
         return True
     latest = subpathGetModTime(ufoPath, *subPath)
     return latest != previous
+
 
 # ---------------
 # Store Mod Times
@@ -1585,6 +1681,7 @@ def storeModTimes(lib, modTimes):
         lines.append(line)
     text = "\n".join(lines)
     lib[modTimeLibKey] = text
+
 
 def readModTimes(lib):
     """
@@ -1612,6 +1709,7 @@ def readModTimes(lib):
         modTimes[fileName] = modTime
     return modTimes
 
+
 # ----------------
 # Image Management
 # ----------------
@@ -1624,6 +1722,7 @@ def readImagesDirectory(ufoPath):
     imageNames = [subpathSplit(path)[-1] for path in glob.glob(pattern)]
     return set(imageNames)
 
+
 def purgeImagesDirectory(ufoPath, toPurge):
     """
     Purge specified images from the images directory.
@@ -1633,11 +1732,13 @@ def purgeImagesDirectory(ufoPath, toPurge):
             path = subpathJoin(ufoPath, *["images", fileName])
             os.remove(path)
 
+
 def storeImageReferences(lib, imageReferences):
     """
     Store the image references.
     """
     lib[imageReferencesLibKey] = imageReferences
+
 
 def readImageReferences(lib):
     """
@@ -1645,6 +1746,7 @@ def readImageReferences(lib):
     """
     references = lib.get(imageReferencesLibKey)
     return references
+
 
 # ----------------------
 # User Name to File Name
@@ -1659,16 +1761,20 @@ reservedFileNames = "CON PRN AUX CLOCK$ NUL A:-Z: COM1".lower().split(" ")
 reservedFileNames += "LPT1 LPT2 LPT3 COM2 COM3 COM4".lower().split(" ")
 maxFileNameLength = 255
 
+
 class NameTranslationError(Exception):
     pass
 
-def userNameToFileName(userName, existing=[], prefix="", suffix=""):
+
+def userNameToFileName(userName, existing=None, prefix="", suffix=""):
     """
     existing should be a case-insensitive list
     of all existing file names.
     """
-    # the incoming name must be a unicode string
-    assert isinstance(userName, unicode), "The value for userName must be a unicode string."
+    if existing is None:
+        existing = []
+    # the incoming name must be a string
+    assert isinstance(userName, str), "The value for userName must be a string."
     # establish the prefix and suffix lengths
     prefixLength = len(prefix)
     suffixLength = len(suffix)
@@ -1704,11 +1810,14 @@ def userNameToFileName(userName, existing=[], prefix="", suffix=""):
     # finished
     return fullName
 
-def handleClash1(userName, existing=[], prefix="", suffix=""):
+
+def handleClash1(userName, existing=None, prefix="", suffix=""):
     """
     existing must be a case-insensitive list
     of all existing file names.
     """
+    if existing is None:
+        existing = []
     # if the prefix length + user name length + suffix length + 15 is at
     # or past the maximum length, slice 15 characters off of the user name
     prefixLength = len(prefix)
@@ -1736,11 +1845,14 @@ def handleClash1(userName, existing=[], prefix="", suffix=""):
     # finished
     return finalName
 
-def handleClash2(existing=[], prefix="", suffix=""):
+
+def handleClash2(existing=None, prefix="", suffix=""):
     """
     existing must be a case-insensitive list
     of all existing file names.
     """
+    if existing is None:
+        existing = []
     # calculate the longest possible string
     maxLength = maxFileNameLength - len(prefix) - len(suffix)
     maxValue = int("9" * maxLength)
@@ -1762,12 +1874,14 @@ def handleClash2(existing=[], prefix="", suffix=""):
     # finished
     return finalName
 
+
 # -------
 # Testing
 # -------
 
 def _runProfile(outPath):
     normalizeUFO(outPath)
+
 
 def runTests():
     # unit tests
