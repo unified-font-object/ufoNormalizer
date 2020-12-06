@@ -1,32 +1,25 @@
 from setuptools import setup
-from io import open
-import ast
-
-
-with open('src/ufonormalizer.py', 'r', encoding='utf-8') as f:
-    for line in f:
-        if line.startswith(u'__version__'):
-            version = ast.parse(line).body[0].value.s
-            break
-    else:
-        raise RuntimeError("No __version__ string found!")
 
 
 setup(
     name="ufonormalizer",
-    version=version,
     description=("Script to normalize the XML and other data "
                  "inside of a UFO."),
     author="Tal Leming",
     author_email="tal@typesupply.com",
     url="https://github.com/unified-font-object/ufoNormalizer",
     package_dir={"": "src"},
-    py_modules=['ufonormalizer'],
+    py_modules=['ufonormalizer', '_version'],
     entry_points={
         'console_scripts': [
             "ufonormalizer = ufonormalizer:main",
         ]
     },
+    use_scm_version={
+        "write_to": 'src/_version.py',
+        "write_to_template": '__version__ = "{version}"',
+    },
+    setup_requires=['setuptools_scm'],
     test_suite="tests",
     license="OpenSource, BSD-style",
     platforms=["Any"],
@@ -46,4 +39,5 @@ setup(
         "Topic :: Multimedia :: Graphics :: Graphics Conversion",
     ],
     python_requires='>=3.6',
+    zip_safe=True,
 )
