@@ -43,7 +43,8 @@ jobs:
         flake8 --count --show-source --statistics
 
     - name: Run test suite & upload coverage
-      env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         coverage run setup.py test
         coveralls
