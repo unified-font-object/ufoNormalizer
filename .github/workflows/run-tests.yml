@@ -42,9 +42,21 @@ jobs:
       run: |
         flake8 --count --show-source --statistics
 
-    - name: Run test suite & upload coverage
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        coverage run setup.py test
-        coveralls
+    - name: Test Python ${{ matrix.python-version }}
+      run: coverage run setup.py test
+    - name: Coveralls Parallel
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}
+        flag-name: ${{ matrix.python-version }}
+        parallel: true
+
+  finish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}
+        parallel-finished: true
