@@ -9,14 +9,14 @@ setup(
     author_email="tal@typesupply.com",
     url="https://github.com/unified-font-object/ufoNormalizer",
     package_dir={"": "src"},
-    py_modules=['ufonormalizer', '_version'],
+    packages={"ufonormalizer"},
     entry_points={
         'console_scripts': [
             "ufonormalizer = ufonormalizer:main",
         ]
     },
     use_scm_version={
-        "write_to": 'src/_version.py',
+        "write_to": 'src/ufonormalizer/_version.py',
         "write_to_template": '__version__ = "{version}"',
     },
     setup_requires=['setuptools_scm'],
