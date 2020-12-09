@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 setup(
@@ -9,7 +9,7 @@ setup(
     author_email="tal@typesupply.com",
     url="https://github.com/unified-font-object/ufoNormalizer",
     package_dir={"": "src"},
-    packages={"ufonormalizer"},
+    packages=find_packages(where="src"),
     entry_points={
         'console_scripts': [
             "ufonormalizer = ufonormalizer:main",

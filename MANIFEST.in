@@ -1,5 +1,0 @@
-include README.md
-include LICENSE.txt
-recursive-include src/ufonormalizer/ *.py
-recursive-include tests/ *.py
-recursive-include tests/data/ *.glif
