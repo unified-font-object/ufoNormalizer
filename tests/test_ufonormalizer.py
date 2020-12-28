@@ -1582,6 +1582,11 @@ class UFONormalizerTest(unittest.TestCase):
                 Ny8wOS8yNiAwOToxMzoyMXEGc31xB2JzLg==
                 """))
 
+    def test_version_not_unknown(self):
+        """Test that package version is not 'unknown', which should only happen in cases
+        where the package has not been installed and is outside of source control. """
+        self.assertNotEqual(ufonormalizerVersion, 'unknown')
+
 
 class XMLWriterTest(unittest.TestCase):
     def __init__(self, methodName):
