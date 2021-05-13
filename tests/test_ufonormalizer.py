@@ -710,12 +710,26 @@ class UFONormalizerTest(unittest.TestCase):
         _normalizeGlifGuideline(element, writer)
         self.assertEqual(writer.getText(), '<guideline x="100"/>')
 
+    def test_normalizeFontInfoPlist_guidelines_vertical_y_is_zero2(self):
+        # Actually a vertical guide
+        element = ET.fromstring("<guideline y='0'/>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifGuideline(element, writer)
+        self.assertEqual(writer.getText(), '<guideline y="0"/>')
+
     def test_normalizeFontInfoPlist_guidelines_horizontal_x_is_zero(self):
         # Actually an horizontal guide
         element = ET.fromstring("<guideline x='0.0' y='100'/>")
         writer = XMLWriter(declaration=None)
         _normalizeGlifGuideline(element, writer)
         self.assertEqual(writer.getText(), '<guideline y="100"/>')
+
+    def test_normalizeFontInfoPlist_guidelines_horizontal_x_is_zero2(self):
+        # Actually an horizontal guide
+        element = ET.fromstring("<guideline x='0.0'/>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifGuideline(element, writer)
+        self.assertEqual(writer.getText(), '<guideline x="0"/>')
 
     def test_normalizeGLIF_lib_defined(self):
         e = '''

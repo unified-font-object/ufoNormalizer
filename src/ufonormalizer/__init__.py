@@ -524,9 +524,9 @@ def _normalizeDictGuideline(guideline):
     # The spec was ambiguous about y=0 or x=0, so don't raise an error here,
     # instead, <x=300 y=0> or <x=0 y=300> are allowed, and the 0 becomes None.
     if angle is None:
-        if x == 0:
+        if x == 0 and y is not None:
             x = None
-        if y == 0:
+        if y == 0 and x is not None:
             y = None
     # either x or y must be defined
     if x is None and y is None:
