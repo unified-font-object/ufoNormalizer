@@ -35,7 +35,5 @@
 			<string>1,0,0,0.5</string>
 		</dict>
 	</lib>
-	<note>
-		arbitrary text about the glyph
-	</note>
+	<note>arbitrary text about the glyph</note>
 </glyph>

@@ -8,7 +8,6 @@ import re
 import shutil
 from xml.etree import cElementTree as ET
 import plistlib
-import textwrap
 import datetime
 import glob
 from collections import OrderedDict
@@ -838,9 +837,7 @@ def _normalizeGlifNote(element, writer):
         return
     if not value.strip():
         return
-    writer.beginElement("note")
-    writer.text(value)
-    writer.endElement("note")
+    writer.simpleElement("note", value=value)
 
 
 def _normalizeGlifOutlineFormat1(element, writer):
@@ -1260,29 +1257,6 @@ class XMLWriter(object):
     def data(self, text):
         line = "<![CDATA[%s]]>" % text
         self.raw(line)
-
-    def text(self, text):
-        text = text.strip("\n")
-        text = dedent_tabs(text)
-        text = text.strip()
-        text = xmlEscapeText(text)
-        paragraphs = []
-        for paragraph in text.splitlines():
-            if not paragraph:
-                paragraphs.append("")
-            else:
-                paragraph = textwrap.wrap(
-                    paragraph.rstrip(),
-                    width=xmlTextMaxLineLength,
-                    expand_tabs=False,
-                    replace_whitespace=False,
-                    drop_whitespace=False,
-                    break_long_words=False,
-                    break_on_hyphens=False
-                )
-                paragraphs.extend(paragraph)
-        for line in paragraphs:
-            self.raw(line)
 
     def simpleElement(self, tag, attrs=None, value=None):
         if attrs:
