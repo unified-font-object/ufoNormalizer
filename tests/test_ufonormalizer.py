@@ -777,6 +777,16 @@ class UFONormalizerTest(unittest.TestCase):
         _normalizeGlifNote(element, writer)
         self.assertEqual(writer.getText(), "<note>Blah</note>")
 
+        # encode accent correctly
+        element = ET.fromstring(
+             tobytes("<note>Don't forget to check the béziers!!</note>",
+                     encoding="utf8"))
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifNote(element, writer)
+        self.assertEqual(
+             writer.getText(),
+             "<note>Don't forget to check the b\xe9ziers!!</note>")
+
         # trailing whitespace is preserved
         element = ET.fromstring("<note>   Blah  \t\n\t  </note>")
         writer = XMLWriter(declaration=None)
@@ -804,6 +814,12 @@ class UFONormalizerTest(unittest.TestCase):
         self.assertEqual(
             writer.getText(),
             "<note>\n\tLine1\n\t\tLine2\n\t    Line3\n</note>")
+
+        # correctly escape xml
+        element = ET.fromstring("<note>escape&lt;br /&gt;me!</note>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifNote(element, writer)
+        self.assertEqual(writer.getText(), "<note>escape&lt;br /&gt;me!</note>")
 
     def test_normalizeGLIF_note_undefined(self):
         element = ET.fromstring("<note></note>")
