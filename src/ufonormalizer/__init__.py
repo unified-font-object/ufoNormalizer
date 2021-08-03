@@ -4,11 +4,9 @@
 import binascii
 import time
 import os
-import re
 import shutil
 from xml.etree import cElementTree as ET
 import plistlib
-import textwrap
 import datetime
 import glob
 from collections import OrderedDict
@@ -838,9 +836,7 @@ def _normalizeGlifNote(element, writer):
         return
     if not value.strip():
         return
-    writer.beginElement("note")
-    writer.text(value)
-    writer.endElement("note")
+    writer.simpleElement("note", value=xmlEscapeText(value))
 
 
 def _normalizeGlifOutlineFormat1(element, writer):
@@ -1261,29 +1257,6 @@ class XMLWriter(object):
         line = "<![CDATA[%s]]>" % text
         self.raw(line)
 
-    def text(self, text):
-        text = text.strip("\n")
-        text = dedent_tabs(text)
-        text = text.strip()
-        text = xmlEscapeText(text)
-        paragraphs = []
-        for paragraph in text.splitlines():
-            if not paragraph:
-                paragraphs.append("")
-            else:
-                paragraph = textwrap.wrap(
-                    paragraph.rstrip(),
-                    width=xmlTextMaxLineLength,
-                    expand_tabs=False,
-                    replace_whitespace=False,
-                    drop_whitespace=False,
-                    break_long_words=False,
-                    break_on_hyphens=False
-                )
-                paragraphs.extend(paragraph)
-        for line in paragraphs:
-            self.raw(line)
-
     def simpleElement(self, tag, attrs=None, value=None):
         if attrs:
             attrs = self.attributesToString(attrs)
@@ -1448,63 +1421,6 @@ def xmlConvertFloat(value):
 
 def xmlConvertInt(value):
     return str(value)
-
-
-# ---------------
-# Text Operations
-# ---------------
-
-WHITESPACE_ONLY_RE = re.compile(r'^[\s\t]+$', re.MULTILINE)
-LEADING_WHITESPACE_RE = re.compile(r'(^(?:\s{4}|\t)*)(?:[^\t\n])', re.MULTILINE)
-
-
-def dedent_tabs(text):
-    """
-    Based on `textwrap.dedent`, but modified to only work on tabs and 4-space indents
-
-    Remove any common leading tabs from every line in `text`.
-    This can be used to make triple-quoted strings line up with the left
-    edge of the display, while still presenting them in the source code
-    in indented form.
-
-    Entirely blank lines are normalized to a newline character.
-    """
-    # Look for the longest leading string of spaces and tabs common to
-    # all lines.
-    margin = None
-    text = WHITESPACE_ONLY_RE.sub('', text)
-    indents = LEADING_WHITESPACE_RE.findall(text)
-    for indent in indents:
-        if margin is None:
-            margin = indent
-
-        # Current line more deeply indented than previous winner:
-        # no change (previous winner is still on top).
-        elif indent.startswith(margin):
-            pass
-
-        # Current line consistent with and no deeper than previous winner:
-        # it's the new winner.
-        elif margin.startswith(indent):
-            margin = indent
-
-        # Find the largest common whitespace between current line and previous
-        # winner.
-        else:
-            for i, (x, y) in enumerate(zip(margin, indent)):
-                if x != y:
-                    margin = margin[:i]
-                    break
-
-    # sanity check (testing/debugging only)
-    if 0 and margin:
-        for line in text.split("\n"):
-            assert not line or line.startswith(margin), \
-                   "line = %r, margin = %r" % (line, margin)
-
-    if margin:
-        text = re.sub(r'(?m)^' + margin, '', text)
-    return text
 
 
 # ---------------

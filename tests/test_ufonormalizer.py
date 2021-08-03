@@ -107,9 +107,7 @@ GLIFFORMAT2 = '''\
             <string>1,0,0,0.5</string>
         </dict>
     </lib>
-    <note>
-        arbitrary text about the glyph
-    </note>
+    <note>arbitrary text about the glyph</note>
 </glyph>
 '''
 
@@ -767,25 +765,35 @@ class UFONormalizerTest(unittest.TestCase):
         self.assertEqual(writer.getText(), '')
 
     def test_normalizeGLIF_note_defined(self):
+        """ Serialization of notes is non-fancy: we take the note text and
+        use it, unchanged, as the body of the <note>element</note>. In previous
+        version of ufonormalizer we would break the user text into lines. See
+        https://github.com/unified-font-object/ufoNormalizer/issues/85 for some
+        background.
+        """
+
         element = ET.fromstring("<note>Blah</note>")
         writer = XMLWriter(declaration=None)
         _normalizeGlifNote(element, writer)
-        self.assertEqual(writer.getText(), "<note>\n\tBlah\n</note>")
+        self.assertEqual(writer.getText(), "<note>Blah</note>")
 
-        element = ET.fromstring("<note>   Blah  \t\n\t  </note>")
-        writer = XMLWriter(declaration=None)
-        _normalizeGlifNote(element, writer)
-        self.assertEqual(writer.getText(), "<note>\n\tBlah\n</note>")
-
+        # encode accent correctly
         element = ET.fromstring(
-            tobytes("<note>Don't forget to check the béziers!!</note>",
-                    encoding="utf8"))
+             tobytes("<note>Don't forget to check the béziers!!</note>",
+                     encoding="utf8"))
         writer = XMLWriter(declaration=None)
         _normalizeGlifNote(element, writer)
         self.assertEqual(
-            writer.getText(),
-            "<note>\n\tDon't forget to check the b\xe9ziers!!\n</note>")
+             writer.getText(),
+             "<note>Don't forget to check the b\xe9ziers!!</note>")
 
+        # trailing whitespace is preserved
+        element = ET.fromstring("<note>   Blah  \t\n\t  </note>")
+        writer = XMLWriter(declaration=None)
+        _normalizeGlifNote(element, writer)
+        self.assertEqual(writer.getText(), "<note>   Blah  \t\n\t  </note>")
+
+        # multiline strings are preserved
         element = ET.fromstring(
             tobytes("<note>A quick brown fox jumps over the lazy dog.\n"
                     "Příliš žluťoučký kůň úpěl ďábelské ódy.</note>",
@@ -794,64 +802,24 @@ class UFONormalizerTest(unittest.TestCase):
         _normalizeGlifNote(element, writer)
         self.assertEqual(
             writer.getText(),
-            "<note>\n\tA quick brown fox jumps over the lazy dog.\n\t"
+            "<note>A quick brown fox jumps over the lazy dog.\n"
             "P\u0159\xedli\u0161 \u017elu\u0165ou\u010dk\xfd k\u016f\u0148 "
-            "\xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.\n</note>")
+            "\xfap\u011bl \u010f\xe1belsk\xe9 \xf3dy.</note>")
 
+        # Everything is always preserved
         element = ET.fromstring(
-            "<note>   Line1  \t\n\n    Line3\t  </note>")
+            "<note>\n\tLine1\n\t\tLine2\n\t    Line3\n</note>")
         writer = XMLWriter(declaration=None)
         _normalizeGlifNote(element, writer)
         self.assertEqual(
             writer.getText(),
-            "<note>\n\tLine1\n\t\n\t    Line3\n</note>")
+            "<note>\n\tLine1\n\t\tLine2\n\t    Line3\n</note>")
 
-        # Normalizer should not indent Line2 and Line3 more than already indented
-        element = ET.fromstring(
-            "<note>\n\tLine1\n\tLine2\n\tLine3\n</note>")
+        # correctly escape xml
+        element = ET.fromstring("<note>escape&lt;br /&gt;me!</note>")
         writer = XMLWriter(declaration=None)
         _normalizeGlifNote(element, writer)
-        self.assertEqual(
-            writer.getText(),
-            "<note>\n\tLine1\n\tLine2\n\tLine3\n</note>")
-
-        # Normalizer should keep the extra tab in line 2
-        element = ET.fromstring(
-            "<note>\n\tLine1\n\t\tLine2\n\tLine3\n</note>")
-        writer = XMLWriter(declaration=None)
-        _normalizeGlifNote(element, writer)
-        self.assertEqual(
-            writer.getText(),
-            "<note>\n\tLine1\n\t\tLine2\n\tLine3\n</note>")
-
-        # Normalizer should keep the extra spaces on line 2
-        element = ET.fromstring(
-            "<note>\n\tLine1\n\t    Line2\n\tLine3\n</note>")
-        writer = XMLWriter(declaration=None)
-        _normalizeGlifNote(element, writer)
-        self.assertEqual(
-            writer.getText(),
-            "<note>\n\tLine1\n\t    Line2\n\tLine3\n</note>")
-
-        # Normalizer should remove the extra tab all lines have in common,
-        # but leave the additional tab on line 2
-        element = ET.fromstring(
-            "<note>\n\t\tLine1\n\t\t\tLine2\n\t\tLine3\n</note>")
-        writer = XMLWriter(declaration=None)
-        _normalizeGlifNote(element, writer)
-        self.assertEqual(
-            writer.getText(),
-            "<note>\n\tLine1\n\t\tLine2\n\tLine3\n</note>")
-
-        # Normalizer should remove the extra 4-space all lines have in common,
-        # but leave the additional 4-space on line 2
-        element = ET.fromstring(
-            "<note>\n        Line1\n            Line2\n        Line3\n</note>")
-        writer = XMLWriter(declaration=None)
-        _normalizeGlifNote(element, writer)
-        self.assertEqual(
-            writer.getText(),
-            "<note>\n\tLine1\n\t    Line2\n\tLine3\n</note>")
+        self.assertEqual(writer.getText(), "<note>escape&lt;br /&gt;me!</note>")
 
     def test_normalizeGLIF_note_undefined(self):
         element = ET.fromstring("<note></note>")
