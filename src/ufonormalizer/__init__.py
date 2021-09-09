@@ -646,7 +646,7 @@ def normalizeGLIFString(text, glifPath=None, imageFileRef=None):
     if advance is not None:
         _normalizeGlifAdvance(advance, writer)
     if glifVersion >= 2 and image is not None:
-        imageFileRef[:] = image.attrib.get("fileName")
+        imageFileRef.append(image.attrib.get("fileName"))
         _normalizeGlifImage(image, writer)
     if outline is not None:
         if glifVersion == 1:
