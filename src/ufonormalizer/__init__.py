@@ -355,8 +355,10 @@ def normalizeGlyphsDirectory(ufoPath, layerDirectory,
             modTimes[fileName] = subpathGetModTime(ufoPath, layerDirectory, fileName)
     if writeModTimes:
         storeModTimes(layerLib, modTimes)
-    storeImageReferences(layerLib, imageReferences)
-    layerInfo["lib"] = layerLib
+    if imageReferences:
+        storeImageReferences(layerLib, imageReferences)
+    if layerLib:
+        layerInfo["lib"] = layerLib
     subpathWritePlist(layerInfo, ufoPath, layerDirectory, "layerinfo.plist")
     normalizeLayerInfoPlist(ufoPath, layerDirectory)
     referencedImages = set(imageReferences.values())
