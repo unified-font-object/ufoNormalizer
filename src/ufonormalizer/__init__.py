@@ -1417,7 +1417,7 @@ def xmlConvertFloat(value):
     if "." in string:
         string = string.rstrip("0")
         if string[-1] == ".":
-            return xmlConvertInt(int(value))
+            return xmlConvertInt(int(string[:-1]))
     return string
 
 
