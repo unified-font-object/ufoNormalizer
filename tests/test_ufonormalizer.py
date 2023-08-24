@@ -1813,6 +1813,7 @@ class XMLWriterTest(unittest.TestCase):
         self.assertEqual(xmlConvertFloat(1.0000000001), '1.0000000001')
         self.assertEqual(xmlConvertFloat(1.00000000001), '1')
         self.assertEqual(xmlConvertFloat(1.00000000009), '1.0000000001')
+        self.assertEqual(xmlConvertFloat(0.9999999999999999), '1')
 
     def test_xmlConvertFloat_no_rounding(self):
         import ufonormalizer
