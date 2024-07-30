@@ -1,5 +1,5 @@
 [![Coverage Status](https://coveralls.io/repos/unified-font-object/ufoNormalizer/badge.svg?branch=master&service=github)](https://coveralls.io/github/unified-font-object/ufoNormalizer?branch=master)
-![Python Versions](https://img.shields.io/badge/python-3.6%2C%203.7%2C%203.8%2C%203.9-blue.svg)
+![Python Versions](https://img.shields.io/badge/python-3.7%2C%203.8%2C%203.9%2C%203.10%2C%203.11-blue.svg)
 [![PyPI Version](https://img.shields.io/pypi/v/ufonormalizer.svg)](https://pypi.python.org/pypi/ufonormalizer)
 
 # ufoNormalizer
