@@ -33,6 +33,8 @@ from plistlib import loads, dumps
 from io import StringIO
 from tempfile import TemporaryDirectory
 
+import ufonormalizer
+
 GLIFFORMAT1 = '''\
 <?xml version="1.0" encoding="UTF-8"?>
 <glyph name="period" format="1">
@@ -195,6 +197,11 @@ class UFONormalizerTest(unittest.TestCase):
         # Python 3 renamed assertRaisesRegexp to assertRaisesRegex.
         if not hasattr(self, "assertRaisesRegex"):
             self.assertRaisesRegex = self.assertRaisesRegexp
+
+    def assertLogsContain(self, logsContext, phrase):
+        self.assertTrue(
+            any(phrase in logLine for logLine in logsContext.output)
+        )
 
     def _test_normalizeGlyphsDirectoryNames(self, oldLayers, expectedLayers):
         directory = tempfile.mkdtemp()
@@ -1413,23 +1420,21 @@ class UFONormalizerTest(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, '2'):
             with redirect_stderr(stream):
                 main([])
-        self.assertTrue("No input path" in stream.getvalue())
+        self.assertIn("the following arguments are required: input", stream.getvalue())
 
     def test_main_input_does_not_exist(self):
-        stream = StringIO()
-        with self.assertRaisesRegex(SystemExit, '2'):
-            with redirect_stderr(stream):
+        with self.assertLogs(ufonormalizer.__name__, level="ERROR") as logs:
+            with self.assertRaisesRegex(SystemExit, '2'):
                 main(['foobarbazquz'])
-        self.assertTrue("Input path does not exist" in stream.getvalue())
+            self.assertLogsContain(logs, "Skipping non-existent input path")
 
     def test_main_input_not_ufo(self):
         # I use the path to the test module itself
         existing_not_ufo_file = os.path.realpath(__file__)
-        stream = StringIO()
-        with self.assertRaisesRegex(SystemExit, '2'):
-            with redirect_stderr(stream):
+        with self.assertLogs(ufonormalizer.__name__, level="ERROR") as logs:
+            with self.assertRaisesRegex(SystemExit, '2'):
                 main([existing_not_ufo_file])
-        self.assertTrue("Input path is not a UFO" in stream.getvalue())
+            self.assertLogsContain(logs, "Skipping input path that isn't a UFO")
 
     def test_main_invalid_float_precision(self):
         stream = StringIO()
