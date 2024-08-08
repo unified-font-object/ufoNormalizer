@@ -12,6 +12,7 @@ import glob
 from collections import OrderedDict
 from io import open
 import logging
+import sys
 
 try:
     from ._version import __version__
@@ -46,7 +47,7 @@ def main(args=None):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("input",
                         help="Path to a UFO to normalize.",
-                        nargs="?")
+                        nargs="+")
     parser.add_argument("-t", "--test",
                         help="Run the normalizer's internal tests.",
                         action="store_true")
@@ -85,16 +86,17 @@ def main(args=None):
     logLevel = "DEBUG" if args.verbose else "ERROR" if args.quiet else "INFO"
     logging.basicConfig(level=logLevel, format="%(message)s")
 
-    if args.input is None:
-        parser.error("No input path was specified.")
-    inputPath = os.path.normpath(args.input)
-    outputPath = args.output
-    onlyModified = not args.all
-    if not os.path.exists(inputPath):
-        parser.error(f'Input path does not exist: "{ inputPath }".')
-    if os.path.splitext(inputPath)[-1].lower() != ".ufo":
-        parser.error(f'Input path is not a UFO: "{ inputPath }".')
+    if len(args.input) > 1 and args.output:
+        parser.error("can't use -o/--output with multiple input UFOs")
+    elif len(args.input) == 1:
+        inputPath = os.path.normpath(args.input[0])
+        inputPaths = [inputPath]
+        outputPaths = [args.output or inputPath]
+    else:
+        inputPaths = [os.path.normpath(inputPath) for inputPath in args.input]
+        outputPaths = inputPaths
 
+    onlyModified = not args.all
     if args.float_precision >= 0:
         floatPrecision = args.float_precision
     elif args.float_precision == -1:
@@ -104,16 +106,28 @@ def main(args=None):
 
     writeModTimes = not args.no_mod_times
 
+    allSkipped = True
     message = 'Normalizing "%s".'
-    if not onlyModified:
-        message += " Processing all files."
-    log.info(message, os.path.basename(inputPath))
-    start = time.time()
-    normalizeUFO(inputPath, outputPath=outputPath, onlyModified=onlyModified,
-                 floatPrecision=floatPrecision, writeModTimes=writeModTimes)
-    runtime = time.time() - start
-    log.info("Normalization complete (%.4f seconds).", runtime)
+    for inputPath, outputPath in zip(inputPaths, outputPaths):
+        if not os.path.exists(inputPath):
+            log.error(f'Skipping non-existent input path: "{ inputPath }".')
+            continue
+        if os.path.splitext(inputPath)[-1].lower() != ".ufo":
+            log.error(f'Skipping input path that isn\'t a UFO: "{ inputPath }".')
+            continue
+        allSkipped = False
 
+        if not onlyModified:
+            message += " Processing all files."
+        log.info(message, os.path.basename(inputPath))
+        start = time.time()
+        normalizeUFO(inputPath, outputPath=outputPath, onlyModified=onlyModified,
+                    floatPrecision=floatPrecision, writeModTimes=writeModTimes)
+        runtime = time.time() - start
+        log.info("Normalization complete (%.4f seconds).", runtime)
+
+    if allSkipped:
+        sys.exit(2)
 
 # ---------
 # Internals
