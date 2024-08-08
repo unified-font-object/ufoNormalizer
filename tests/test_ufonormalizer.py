@@ -1436,6 +1436,13 @@ class UFONormalizerTest(unittest.TestCase):
                 main([existing_not_ufo_file])
             self.assertLogsContain(logs, "Skipping input path that isn't a UFO")
 
+    def test_main_multiple_inputs_and_output(self):
+        stream = StringIO()
+        with self.assertRaisesRegex(SystemExit, '2'):
+            with redirect_stderr(stream):
+                main(['--output', 'foo', 'bar', 'baz'])
+        self.assertIn("can't use -o/--output with multiple input UFOs", stream.getvalue())
+
     def test_main_invalid_float_precision(self):
         stream = StringIO()
         with TemporaryDirectory(suffix=".ufo") as tmp:
