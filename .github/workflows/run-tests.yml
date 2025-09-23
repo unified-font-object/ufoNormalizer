@@ -54,8 +54,9 @@ jobs:
     - name: Run test suite & upload coverage
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # This will test that both source distributions and wheels work.
       run: |
         uv build
-        uv run --isolated --no-project --with dist/*.whl --with coverage coverage run -m unittest
+        uv run --isolated --no-project --with dist/*.whl python -m unittest
         uv run --isolated --no-project --with dist/*.tar.gz --with coverage coverage run -m unittest
         uvx coveralls --service=github
