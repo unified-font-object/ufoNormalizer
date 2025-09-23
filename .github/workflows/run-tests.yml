@@ -58,4 +58,4 @@ jobs:
         uv build
         uv run --isolated --no-project --with dist/*.whl --with coverage coverage run -m unittest
         uv run --isolated --no-project --with dist/*.tar.gz --with coverage coverage run -m unittest
-        coveralls --service=github
+        uvx coveralls --service=github
