@@ -91,9 +91,9 @@ def main(args=None):
     outputPath = args.output
     onlyModified = not args.all
     if not os.path.exists(inputPath):
-        parser.error(f'Input path does not exist: "{ inputPath }".')
+        parser.error(f'Input path does not exist: "{inputPath}".')
     if os.path.splitext(inputPath)[-1].lower() != ".ufo":
-        parser.error(f'Input path is not a UFO: "{ inputPath }".')
+        parser.error(f'Input path is not a UFO: "{inputPath}".')
 
     if args.float_precision >= 0:
         floatPrecision = args.float_precision
