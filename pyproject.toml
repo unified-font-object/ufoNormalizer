@@ -1,6 +1,35 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
+requires = ["setuptools>=80", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ufonormalizer"
+dynamic = ["version"]
+description = "Script to normalize the XML and other data inside of a UFO."
+readme = "README.md"
+license-files = ["LICENSE.txt"]
+requires-python = ">=3.6"
+authors = [{ name = "Tal Leming", email = "tal@typesupply.com" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Environment :: Other Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+    "Topic :: Text Processing :: Fonts",
+]
+
+[project.urls]
+Homepage = "https://github.com/unified-font-object/ufoNormalizer"
+
+[project.scripts]
+ufonormalizer = "ufonormalizer:main"
 
 [tool.setuptools_scm]
 write_to = 'src/ufonormalizer/_version.py'
-write_to_template = '__version__ = "{version}"'
