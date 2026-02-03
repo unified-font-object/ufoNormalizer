@@ -656,7 +656,7 @@ def normalizeGLIFString(text, glifPath=None, imageFileRef=None):
         else:
             _normalizeGlifOutlineFormat2(outline, writer)
     if glifVersion >= 2:
-        for anchor in anchors:
+        for anchor in sorted(anchors, key=lambda e: e.attrib.get("name", "")):
             _normalizeGlifAnchor(anchor, writer)
     if glifVersion >= 2:
         for guideline in guidelines:

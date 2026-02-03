@@ -95,6 +95,7 @@ GLIFFORMAT2 = '''\
         </contour>
         <component base="a"/>
     </outline>
+    <anchor name="bottom" x="74" y="0"/>
     <anchor name="top" x="74" y="197"/>
     <guideline name="overshoot" y="-12"/>
     <lib>

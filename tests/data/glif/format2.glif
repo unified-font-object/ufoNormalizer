@@ -24,6 +24,7 @@
 		<component base="a"/>
 	</outline>
 	<anchor name="top" x="74" y="197"/>
+	<anchor name="bottom" x="74" y="0"/>
 	<guideline name="overshoot" y="-12"/>
 	<lib>
 		<dict>
